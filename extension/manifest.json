@@ -1,1 +1,27 @@
-
+{
+  "manifest_version": 3,
+  "name": "UdemyIngest",
+  "version": "1.0.0",
+  "description": "Extract and export Udemy course structures and metadata into AI-friendly Markdown and JSON.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.udemy.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.udemy.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
