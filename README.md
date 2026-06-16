@@ -1,10 +1,6 @@
 <p align="center">
   <br>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.icons8.com/fluency/96/graduation-cap.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://img.icons8.com/fluency/96/graduation-cap.png">
-    <img alt="AI Ingest" src="https://img.icons8.com/fluency/96/graduation-cap.png" width="80">
-  </picture>
+  <img alt="AI Ingest" src="extension/icon-128.png" width="80">
 </p>
 
 <h1 align="center">AI Ingest</h1>
