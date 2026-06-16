@@ -23,5 +23,6 @@
       ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "update_url": "https://raw.githubusercontent.com/shubham2007p/udemy-ingest/main/updates.xml"
 }
