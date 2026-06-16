@@ -20,8 +20,8 @@
 <br>
 
 <p align="center">
-  <a href="https://github.com/shubham2007p/udemy-ingest/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shubham2007p/udemy-ingest?style=for-the-badge&color=0969da&labelColor=1a1a2e" alt="License"></a>&nbsp;
-  <a href="https://github.com/shubham2007p/udemy-ingest/stargazers"><img src="https://img.shields.io/github/stars/shubham2007p/udemy-ingest?style=for-the-badge&color=e3b341&labelColor=1a1a2e" alt="Stars"></a>&nbsp;
+  <a href="https://github.com/shubham2007p/udemy-ingest/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-0969da?style=for-the-badge&labelColor=1a1a2e" alt="License"></a>&nbsp;
+  <a href="https://github.com/shubham2007p/udemy-ingest/stargazers"><img src="https://img.shields.io/badge/Stars-⭐_Star_This_Repo-e3b341?style=for-the-badge&labelColor=1a1a2e" alt="Stars"></a>&nbsp;
   <img src="https://img.shields.io/badge/Platform-Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=1a1a2e" alt="Chrome">&nbsp;
   <img src="https://img.shields.io/badge/Manifest-V3-00c853?style=for-the-badge&labelColor=1a1a2e" alt="Manifest V3">
 </p>
