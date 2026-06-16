@@ -1,0 +1,9 @@
+# Ignore the design mockup/specification document
+DESIGN-opencode.ai.md
+
+# Ignore IDE settings
+.idea/
+.vscode/
+
+# Ignore logs
+*.log
