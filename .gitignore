@@ -1,3 +1,6 @@
+# Ignore support/internal documents
+support material/
+
 # Ignore the design mockup/specification document
 DESIGN-opencode.ai.md
 

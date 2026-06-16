@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "UdemyIngest",
+  "name": "AI Ingest",
   "version": "1.0.0",
-  "description": "Extract and export Udemy course structures and metadata into AI-friendly Markdown and JSON.",
+  "description": "Extract and export learning platform course structures, progress, and context into AI-ready Markdown, JSON, and prompt-optimized formats.",
   "permissions": [
     "activeTab",
     "scripting"
@@ -23,6 +23,5 @@
       ],
       "run_at": "document_idle"
     }
-  ],
-  "update_url": "https://raw.githubusercontent.com/shubham2007p/udemy-ingest/main/updates.xml"
+  ]
 }

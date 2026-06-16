@@ -3,14 +3,14 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://img.icons8.com/fluency/96/graduation-cap.png">
     <source media="(prefers-color-scheme: light)" srcset="https://img.icons8.com/fluency/96/graduation-cap.png">
-    <img alt="Udemy Ingest" src="https://img.icons8.com/fluency/96/graduation-cap.png" width="80">
+    <img alt="AI Ingest" src="https://img.icons8.com/fluency/96/graduation-cap.png" width="80">
   </picture>
 </p>
 
-<h1 align="center">Udemy Ingest</h1>
+<h1 align="center">AI Ingest</h1>
 
 <p align="center">
-  <strong>Turn your Udemy course progress into AI-ready context — in one click.</strong>
+  <strong>Turn your learning progress into AI-ready context — in one click.</strong>
 </p>
 
 <p align="center">
@@ -56,7 +56,7 @@ The AI has **zero context**:
 
 **Result?** You spend 5 minutes rebuilding context before every conversation.
 
-**Udemy Ingest eliminates this entirely.**
+**AI Ingest eliminates this entirely.**
 
 <br>
 
@@ -64,7 +64,7 @@ The AI has **zero context**:
 
 ```
 ┌──────────────┐     ┌───────────────────┐     ┌──────────────────┐
-│  Udemy Page  │────▶│   Udemy Ingest    │────▶│   AI Assistant   │
+│ Course Page  │────▶│    AI Ingest      │────▶│   AI Assistant   │
 │              │     │                   │     │                  │
 │ • Curriculum │     │ • Extract course  │     │ ✓ Knows course   │
 │ • Progress   │     │ • Detect progress │     │ ✓ Knows progress │
@@ -215,9 +215,9 @@ git pull origin main
 
 Then click the **↻ Reload** button on the extension card in `chrome://extensions/`. Done.
 
-### CRX Auto-Updates (Advanced)
+### Chrome Web Store (Coming Soon)
 
-The extension ships with `update_url` in `manifest.json` pointing to `updates.xml`. If you package it as a `.crx` file, Chrome will automatically check for and apply updates when new versions are pushed.
+Once published to the Chrome Web Store, the extension will update automatically — no manual steps required.
 
 <br>
 

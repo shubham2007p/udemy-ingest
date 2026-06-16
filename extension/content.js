@@ -276,7 +276,7 @@ async function fetchProgress(courseId) {
       };
     }
   } catch (err) {
-    console.warn("[UdemyIngest] Progress API fetch failed:", err);
+    console.warn("[AIIngest] Progress API fetch failed:", err);
   }
   return null;
 }
@@ -356,7 +356,7 @@ async function extractCourseData() {
   let extractedViaApi = false;
   
   if (courseId) {
-    console.log("[UdemyIngest] Found Course ID:", courseId);
+    console.log("[AIIngest] Found Course ID:", courseId);
     
     // Tier 1: Try subscriber curriculum API
     try {
@@ -367,11 +367,11 @@ async function extractCourseData() {
         if (json.results && json.results.length > 0) {
           sections = parseApiCurriculum(json.results);
           extractedViaApi = true;
-          console.log("[UdemyIngest] Successfully extracted curriculum via Tier 1 Subscriber API.");
+          console.log("[AIIngest] Successfully extracted curriculum via Tier 1 Subscriber API.");
         }
       }
     } catch (err) {
-      console.warn("[UdemyIngest] Tier 1 API fetch failed:", err);
+      console.warn("[AIIngest] Tier 1 API fetch failed:", err);
     }
     
     // Tier 2: Try public curriculum API if Tier 1 failed
@@ -384,18 +384,18 @@ async function extractCourseData() {
           if (json.results && json.results.length > 0) {
             sections = parseApiCurriculum(json.results);
             extractedViaApi = true;
-            console.log("[UdemyIngest] Successfully extracted curriculum via Tier 2 Public API.");
+            console.log("[AIIngest] Successfully extracted curriculum via Tier 2 Public API.");
           }
         }
       } catch (err) {
-        console.warn("[UdemyIngest] Tier 2 API fetch failed:", err);
+        console.warn("[AIIngest] Tier 2 API fetch failed:", err);
       }
     }
   }
   
   // Tier 3: DOM Scraping Fallback (If APIs failed or Course ID is not found)
   if (!extractedViaApi) {
-    console.log("[UdemyIngest] Falling back to Tier 3 DOM Scraping...");
+    console.log("[AIIngest] Falling back to Tier 3 DOM Scraping...");
     
     // Auto-expand curriculum accordions on landing page before scraping
     const expandButton = document.querySelector('button[data-purpose="expand-toggle"], [class*="expand-all"], button[class*="curriculum-header"]');
