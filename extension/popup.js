@@ -10,6 +10,7 @@ const readyCourseTitle = document.getElementById("ready-course-title");
 const btnExtract = document.getElementById("btn-extract");
 const loadingStatus = document.getElementById("loading-status");
 const extractionProgress = document.getElementById("extraction-progress");
+const spinnerEl = document.getElementById("ascii-spinner");
 
 const successCourseTitle = document.getElementById("success-course-title");
 const successCourseInstructor = document.getElementById("success-course-instructor");
@@ -19,6 +20,7 @@ const statLectures = document.getElementById("stat-lectures");
 
 const tabBtnMarkdown = document.getElementById("tab-btn-markdown");
 const tabBtnJson = document.getElementById("tab-btn-json");
+const tabBtnAi = document.getElementById("tab-btn-ai");
 const outputView = document.getElementById("output-view");
 const btnCopy = document.getElementById("btn-copy");
 const copyText = document.getElementById("copy-text");
@@ -27,6 +29,7 @@ const copyText = document.getElementById("copy-text");
 let activeTabId = null;
 let currentCourseData = null;
 let activeFormat = "markdown"; // or "json"
+let spinnerInterval = null;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", async () => {
@@ -38,6 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   if (isUdemyUrl(tab.url)) {
     showPanel("loading");
+    startSpinner();
     updateProgress("Checking page state...", 20);
     
     // Check if content script is loaded
@@ -45,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const response = await pingContentScript(tab.id);
       if (response && response.status === "ready") {
         updateProgress("Content script connected.", 60);
+        stopSpinner();
         showReadyState(tab.id);
       } else {
         throw new Error("Content script not responding");
@@ -61,12 +66,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         await new Promise(r => setTimeout(r, 200));
         const response = await pingContentScript(tab.id);
         if (response && response.status === "ready") {
+          stopSpinner();
           showReadyState(tab.id);
         } else {
+          stopSpinner();
           showPanel("unsupported");
         }
       } catch (injectErr) {
         console.error("Failed to inject content script:", injectErr);
+        stopSpinner();
         showPanel("unsupported");
       }
     }
@@ -80,6 +88,7 @@ btnExtract.addEventListener("click", startExtraction);
 
 tabBtnMarkdown.addEventListener("click", () => switchTab("markdown"));
 tabBtnJson.addEventListener("click", () => switchTab("json"));
+tabBtnAi.addEventListener("click", () => switchTab("ai"));
 
 btnCopy.addEventListener("click", copyToClipboard);
 
@@ -111,6 +120,26 @@ function updateProgress(status, pct) {
   extractionProgress.style.width = pct + "%";
 }
 
+// ASCII Spinner Animation
+function startSpinner() {
+  if (spinnerInterval) clearInterval(spinnerInterval);
+  const chars = ["/", "-", "\\", "|"];
+  let idx = 0;
+  spinnerInterval = setInterval(() => {
+    if (spinnerEl) {
+      spinnerEl.textContent = chars[idx];
+      idx = (idx + 1) % chars.length;
+    }
+  }, 120);
+}
+
+function stopSpinner() {
+  if (spinnerInterval) {
+    clearInterval(spinnerInterval);
+    spinnerInterval = null;
+  }
+}
+
 async function pingContentScript(tabId) {
   return new Promise((resolve) => {
     chrome.tabs.sendMessage(tabId, { action: "ping" }, (response) => {
@@ -136,6 +165,7 @@ async function showReadyState(tabId) {
 
 async function startExtraction() {
   showPanel("loading");
+  startSpinner();
   updateProgress("Extracting course details...", 30);
   
   // Dynamic status text simulations
@@ -154,6 +184,7 @@ async function startExtraction() {
 
   chrome.tabs.sendMessage(activeTabId, { action: "extractCourseData" }, (response) => {
     clearInterval(statusInterval);
+    stopSpinner();
     if (chrome.runtime.lastError || !response || !response.success) {
       const errMsg = (response && response.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || "Failed to extract";
       alert("Extraction Error: " + errMsg);
@@ -186,14 +217,16 @@ function displaySuccess(data) {
 function switchTab(format) {
   activeFormat = format;
   
+  tabBtnMarkdown.classList.toggle("active", format === "markdown");
+  tabBtnJson.classList.toggle("active", format === "json");
+  tabBtnAi.classList.toggle("active", format === "ai");
+  
   if (format === "markdown") {
-    tabBtnMarkdown.classList.add("active");
-    tabBtnJson.classList.remove("active");
     outputView.textContent = generateMarkdown(currentCourseData);
-  } else {
-    tabBtnMarkdown.classList.remove("active");
-    tabBtnJson.classList.add("active");
+  } else if (format === "json") {
     outputView.textContent = generateJSON(currentCourseData);
+  } else if (format === "ai") {
+    outputView.textContent = generateAIContext(currentCourseData);
   }
 }
 
@@ -202,7 +235,18 @@ function generateMarkdown(data) {
   
   let md = `# ${data.title}\n\n`;
   if (data.instructor) md += `Instructor: ${data.instructor}\n`;
-  if (data.duration) md += `Duration: ${data.duration}\n\n`;
+  if (data.duration) md += `Duration: ${data.duration}\n`;
+  
+  if (data.progress) {
+    const p = data.progress;
+    md += `Progress: ${p.percentComplete}% complete (${p.completedLecturesCount}/${p.totalLecturesCount} lectures, ${p.completedSectionsCount}/${p.totalSectionsCount} sections completed)\n`;
+  }
+  
+  if (data.currentLecture) {
+    const cur = data.currentLecture;
+    md += `Current Position: Section ${cur.sectionIndex + 1} - "${cur.sectionName}" > Lecture "${cur.title}"\n`;
+  }
+  md += `\n`;
   
   if (data.learningObjectives && data.learningObjectives.length > 0) {
     md += `## Learning Objectives\n`;
@@ -226,10 +270,13 @@ function generateMarkdown(data) {
   
   md += `## Curriculum\n\n`;
   data.sections.forEach((sec, idx) => {
-    md += `### Section ${idx + 1} - ${sec.name}\n\n`;
-    sec.lectures.forEach((lec, lIdx) => {
+    const secStatus = sec.completed ? ' [COMPLETED]' : '';
+    md += `### Section ${idx + 1} - ${sec.name}${secStatus}\n\n`;
+    sec.lectures.forEach((lec) => {
       const durStr = lec.duration ? ` (${lec.duration})` : '';
-      md += `* ${lec.title}${durStr}\n`;
+      const check = lec.completed ? '[x]' : '[ ]';
+      const currentMarker = lec.isCurrent ? ' <-- CURRENT POSITION' : '';
+      md += `* ${check} ${lec.title}${durStr}${currentMarker}\n`;
     });
     md += `\n`;
   });
@@ -246,8 +293,72 @@ function generateJSON(data) {
     description: data.description,
     learningObjectives: data.learningObjectives,
     prerequisites: data.prerequisites,
+    progress: data.progress,
+    currentLecture: data.currentLecture,
     sections: data.sections
   }, null, 2);
+}
+
+function generateAIContext(data) {
+  if (!data) return "";
+  
+  let ai = `Use this information as the learner's current course progress and learning context.\n\n`;
+  ai += `# Learning Context: Udemy Course Progress\n`;
+  ai += `* **Course:** ${data.title}\n`;
+  if (data.instructor) ai += `* **Instructor:** ${data.instructor}\n`;
+  
+  if (data.progress) {
+    const p = data.progress;
+    ai += `* **Current Progress:** ${p.percentComplete}% Complete (${p.completedLecturesCount}/${p.totalLecturesCount} lectures completed, ${p.completedSectionsCount}/${p.totalSectionsCount} sections completed)\n`;
+  }
+  
+  if (data.currentLecture) {
+    const cur = data.currentLecture;
+    ai += `* **Current Position:** Section ${cur.sectionIndex + 1} - "${cur.sectionName}" > Lecture "${cur.title}"\n`;
+  }
+  ai += `\n`;
+  
+  ai += `## Completed Topics\n`;
+  let hasCompleted = false;
+  data.sections.forEach((sec, idx) => {
+    const completedLectures = sec.lectures.filter(l => l.completed);
+    if (completedLectures.length === sec.lectures.length && sec.lectures.length > 0) {
+      ai += `* **Section ${idx + 1}: ${sec.name}** - [All ${sec.lectures.length} lectures completed]\n`;
+      hasCompleted = true;
+    } else if (completedLectures.length > 0) {
+      ai += `* **Section ${idx + 1}: ${sec.name}**\n`;
+      completedLectures.forEach(l => {
+        ai += `  - [x] ${l.title}\n`;
+      });
+      hasCompleted = true;
+    }
+  });
+  if (!hasCompleted) {
+    ai += `* No topics completed yet.\n`;
+  }
+  ai += `\n`;
+  
+  ai += `## Remaining Topics to Study\n`;
+  let hasRemaining = false;
+  data.sections.forEach((sec, idx) => {
+    const remainingLectures = sec.lectures.filter(l => !l.completed);
+    if (remainingLectures.length === sec.lectures.length && sec.lectures.length > 0) {
+      ai += `* **Section ${idx + 1}: ${sec.name}** - [All ${sec.lectures.length} lectures remaining]\n`;
+      hasRemaining = true;
+    } else if (remainingLectures.length > 0) {
+      ai += `* **Section ${idx + 1}: ${sec.name}**\n`;
+      remainingLectures.forEach(l => {
+        const currentMarker = l.isCurrent ? ' <-- CURRENT POSITION (Start here)' : '';
+        ai += `  - [ ] ${l.title}${currentMarker}\n`;
+      });
+      hasRemaining = true;
+    }
+  });
+  if (!hasRemaining) {
+    ai += `* All topics completed!\n`;
+  }
+  
+  return ai.trim();
 }
 
 function copyToClipboard() {
@@ -255,20 +366,12 @@ function copyToClipboard() {
   if (!text) return;
   
   navigator.clipboard.writeText(text).then(() => {
-    // Show visual feedback
     btnCopy.classList.add("success");
-    copyText.textContent = "Copied!";
+    copyText.textContent = "[ COPIED! ]";
     
-    // Add micro-animation bounce
-    btnCopy.style.transform = "scale(0.95)";
-    setTimeout(() => {
-      btnCopy.style.transform = "";
-    }, 150);
-
-    // Revert after 2 seconds
     setTimeout(() => {
       btnCopy.classList.remove("success");
-      copyText.textContent = "Copy to Clipboard";
+      copyText.textContent = "[ COPY TO CLIPBOARD ]";
     }, 2000);
   }).catch(err => {
     console.error("Failed to copy text: ", err);

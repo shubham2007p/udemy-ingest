@@ -69,6 +69,7 @@ function parseApiCurriculum(results) {
   for (let item of results) {
     if (item._class === "chapter") {
       currentSection = {
+        id: item.id,
         name: item.title,
         lectures: []
       };
@@ -80,12 +81,15 @@ function parseApiCurriculum(results) {
       }
       
       const lectureObj = {
+        id: item.id,
         title: item.title,
-        duration: duration
+        duration: duration,
+        type: item._class
       };
       
       if (!currentSection) {
         currentSection = {
+          id: null,
           name: "Introduction",
           lectures: []
         };
@@ -247,6 +251,102 @@ async function scrapeDOMCurriculum() {
   return sections;
 }
 
+// Clean titles by stripping number prefixes (e.g. "1. ") and normalizing
+function cleanTitle(title) {
+  if (!title) return "";
+  return title.replace(/^\d+[\.\s\-]+\s*/, "").toLowerCase().trim();
+}
+
+// Extract current item ID from the player URL
+function getCurrentItemIdFromUrl() {
+  const match = window.location.pathname.match(/\/learn\/(lecture|quiz|practice|assignment)\/(\d+)/);
+  return match ? parseInt(match[2], 10) : null;
+}
+
+// Fetch user progress from internal API
+async function fetchProgress(courseId) {
+  try {
+    const progressUrl = `${window.location.origin}/api-2.0/users/me/subscribed-courses/${courseId}/progress/`;
+    const response = await fetch(progressUrl);
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        completedLectureIds: data.completed_lecture_ids || [],
+        lastAccessedLectureId: data.last_accessed_lecture_id || null
+      };
+    }
+  } catch (err) {
+    console.warn("[UdemyIngest] Progress API fetch failed:", err);
+  }
+  return null;
+}
+
+// Scrape progress checkmarks and active status from the player page DOM
+function scrapeDOMProgress() {
+  const completedTitles = new Set();
+  let currentLectureTitle = null;
+  let currentSectionTitle = null;
+  
+  // Locate checkboxes in player sidebar
+  const checkboxes = document.querySelectorAll('input[type="checkbox"][data-purpose="progress-toggle-button"]');
+  checkboxes.forEach(cb => {
+    const parentRow = cb.closest('[class*="curriculum-item--row--"], [class*="curriculum-item--container--"], [data-purpose="sidebar-item"], li, div');
+    if (!parentRow) return;
+    
+    const titleEl = parentRow.querySelector('[class*="item-title"], [class*="lecture-title"], [class*="curriculum-item--title"], [data-purpose="item-title"], span, a');
+    if (!titleEl) return;
+    
+    const titleText = titleEl.innerText.trim();
+    if (titleText) {
+      if (cb.checked) {
+        completedTitles.add(cleanTitle(titleText));
+      }
+      
+      const isSelected = parentRow.classList.contains('selected') || 
+                         parentRow.classList.contains('active') ||
+                         parentRow.getAttribute('aria-current') === 'true' ||
+                         parentRow.getAttribute('aria-current') === 'step' ||
+                         !!parentRow.querySelector('[class*="selected"]') ||
+                         !!parentRow.querySelector('[class*="active"]');
+      if (isSelected) {
+        currentLectureTitle = titleText;
+        const sectionPanel = parentRow.closest('[class*="section--section-panel--"], [data-purpose="section-panel"], [class*="section--section--"]');
+        if (sectionPanel) {
+          const secHeader = sectionPanel.querySelector('[class*="section-title"], [class*="section-header"], [data-purpose="section-title"], h3, h4');
+          if (secHeader) {
+            currentSectionTitle = secHeader.innerText.trim();
+          }
+        }
+      }
+    }
+  });
+
+  // Fallback for current lecture title if no checkbox row is marked active/selected
+  if (!currentLectureTitle) {
+    const activeEl = document.querySelector(
+      '[class*="item--item--selected"], [class*="item--selected"], [class*="curriculum-item--selected"], [aria-current="true"], [aria-current="step"]'
+    );
+    if (activeEl) {
+      const titleEl = activeEl.querySelector('[class*="item-title"], [class*="lecture-title"], [class*="curriculum-item--title"], [data-purpose="item-title"], span, a') || activeEl;
+      currentLectureTitle = titleEl.innerText.trim();
+      
+      const sectionPanel = activeEl.closest('[class*="section--section-panel--"], [data-purpose="section-panel"], [class*="section--section--"]');
+      if (sectionPanel) {
+        const secHeader = sectionPanel.querySelector('[class*="section-title"], [class*="section-header"], [data-purpose="section-title"], h3, h4');
+        if (secHeader) {
+          currentSectionTitle = secHeader.innerText.trim();
+        }
+      }
+    }
+  }
+  
+  return {
+    completedTitles,
+    currentLectureTitle,
+    currentSectionTitle
+  };
+}
+
 // Orchestrates the multi-tier extraction
 async function extractCourseData() {
   const metadata = scrapeDOMMetadata();
@@ -260,7 +360,7 @@ async function extractCourseData() {
     
     // Tier 1: Try subscriber curriculum API
     try {
-      const subUrl = `https://www.udemy.com/api-2.0/courses/${courseId}/cached-subscriber-curriculum-items/?page_size=10000&fields[chapter]=title,object_index,sort_order&fields[lecture]=title,object_index,asset,supplementary_assets&fields[asset]=time_estimation,asset_type`;
+      const subUrl = `${window.location.origin}/api-2.0/courses/${courseId}/cached-subscriber-curriculum-items/?page_size=10000&fields[chapter]=title,object_index,sort_order&fields[lecture]=title,object_index,asset,supplementary_assets&fields[asset]=time_estimation,asset_type`;
       const response = await fetch(subUrl);
       if (response.ok) {
         const json = await response.json();
@@ -277,7 +377,7 @@ async function extractCourseData() {
     // Tier 2: Try public curriculum API if Tier 1 failed
     if (!extractedViaApi) {
       try {
-        const pubUrl = `https://www.udemy.com/api-2.0/courses/${courseId}/public-curriculum-items/?page_size=10000`;
+        const pubUrl = `${window.location.origin}/api-2.0/courses/${courseId}/public-curriculum-items/?page_size=10000`;
         const response = await fetch(pubUrl);
         if (response.ok) {
           const json = await response.json();
@@ -307,15 +407,93 @@ async function extractCourseData() {
     sections = await scrapeDOMCurriculum();
   }
   
-  // Clean empty sections and count stats
+  // Clean empty sections
   const cleanSections = sections.filter(sec => sec.name && sec.name.length > 0);
-  let totalLectures = 0;
-  cleanSections.forEach(sec => {
-    totalLectures += sec.lectures.length;
+  
+  // Fetch user progress via API if enrolled and courseId exists
+  let completedLectureIds = [];
+  let lastAccessedLectureId = null;
+  if (courseId) {
+    const progressData = await fetchProgress(courseId);
+    if (progressData) {
+      completedLectureIds = progressData.completedLectureIds;
+      lastAccessedLectureId = progressData.lastAccessedLectureId;
+    }
+  }
+  
+  // Scrape DOM progress info as well
+  const domProgress = scrapeDOMProgress();
+  const currentLectureIdFromUrl = getCurrentItemIdFromUrl();
+  
+  // Enrich sections with progress info
+  let completedLecturesCount = 0;
+  let totalLecturesCount = 0;
+  let currentLectureObj = null;
+  
+  const enrichedSections = cleanSections.map((sec, secIdx) => {
+    let sectionCompletedCount = 0;
+    
+    const enrichedLectures = sec.lectures.map(lec => {
+      totalLecturesCount++;
+      
+      const isCompleted = (lec.id && completedLectureIds.includes(lec.id)) || 
+                          (lec.title && domProgress.completedTitles.has(cleanTitle(lec.title)));
+      
+      const isCurrent = (lec.id && lec.id === currentLectureIdFromUrl) ||
+                        (lec.title && domProgress.currentLectureTitle && cleanTitle(lec.title) === cleanTitle(domProgress.currentLectureTitle)) ||
+                        (lec.id && lec.id === lastAccessedLectureId && !currentLectureIdFromUrl);
+      
+      if (isCompleted) {
+        completedLecturesCount++;
+        sectionCompletedCount++;
+      }
+      
+      const enrichedLec = {
+        ...lec,
+        completed: isCompleted,
+        isCurrent: isCurrent
+      };
+      
+      if (isCurrent) {
+        currentLectureObj = {
+          id: lec.id || null,
+          title: lec.title,
+          sectionName: sec.name,
+          sectionIndex: secIdx
+        };
+      }
+      
+      return enrichedLec;
+    });
+    
+    return {
+      ...sec,
+      lectures: enrichedLectures,
+      completedCount: sectionCompletedCount,
+      totalCount: sec.lectures.length,
+      completed: sec.lectures.length > 0 && sectionCompletedCount === sec.lectures.length
+    };
   });
   
+  // Count completed/remaining sections
+  const totalSectionsCount = enrichedSections.length;
+  const completedSectionsCount = enrichedSections.filter(s => s.completed).length;
+  const remainingSectionsCount = totalSectionsCount - completedSectionsCount;
+  const remainingLecturesCount = totalLecturesCount - completedLecturesCount;
+  const percentComplete = totalLecturesCount > 0 ? Math.round((completedLecturesCount / totalLecturesCount) * 100) : 0;
+  
+  const progressState = {
+    completedLecturesCount,
+    remainingLecturesCount,
+    totalLecturesCount,
+    completedSectionsCount,
+    remainingSectionsCount,
+    totalSectionsCount,
+    percentComplete
+  };
+  
   // Calculate computed duration if page duration is blank
-  const computedDuration = calculateTotalDuration(cleanSections);
+  const computedDuration = calculateTotalDuration(enrichedSections);
   const finalDuration = metadata.duration || computedDuration || "Unknown Duration";
   
   return {
@@ -323,11 +501,13 @@ async function extractCourseData() {
     instructor: metadata.instructor || "Unknown Instructor",
     description: metadata.description || "",
     duration: finalDuration,
-    sectionsCount: cleanSections.length,
-    lecturesCount: totalLectures,
+    sectionsCount: totalSectionsCount,
+    lecturesCount: totalLecturesCount,
     learningObjectives: metadata.learningObjectives,
     prerequisites: metadata.prerequisites,
-    sections: cleanSections
+    sections: enrichedSections,
+    progress: progressState,
+    currentLecture: currentLectureObj
   };
 }
 

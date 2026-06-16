@@ -6,29 +6,19 @@
   <title>UdemyIngest</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="app-container" id="app-container">
     
-    <!-- Header -->
+    <!-- Header: OpenCode Terminal style -->
     <header class="app-header">
       <div class="logo-wrapper">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="url(#grad-cyan-purple)" />
-          <path d="M2 17L12 22L22 17" stroke="url(#grad-cyan-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M2 12L12 17L22 12" stroke="url(#grad-cyan-purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <defs>
-            <linearGradient id="grad-cyan-purple" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#00f2fe" />
-              <stop offset="1" stop-color="#4facfe" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span class="app-title">UdemyIngest</span>
+        <span class="logo-icon">[u_i]</span>
+        <span class="app-title">udemy-ingest</span>
       </div>
-      <span class="app-subtitle">AI Course Structurer</span>
+      <span class="app-subtitle">v1.1.0 // AI_COURSE_STRUCTURER</span>
     </header>
 
     <!-- Main Content Area -->
@@ -37,37 +27,29 @@
       <!-- STATE 1: Unsupported Page -->
       <div id="panel-unsupported" class="panel hidden">
         <div class="info-card warning">
-          <div class="icon-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-alert-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          </div>
-          <h3>Not on Udemy</h3>
-          <p>Please open a Udemy course page or course player page to extract the curriculum structure.</p>
+          <span class="ascii-glyph">[!]</span>
+          <h3>ERROR: NOT_ON_UDEMY</h3>
+          <p>This extension runs on Udemy. Open a course page or player page to extract contents.</p>
         </div>
       </div>
 
       <!-- STATE 2: Ready to Extract -->
       <div id="panel-ready" class="panel hidden">
         <div class="info-card success">
-          <div class="icon-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          </div>
-          <h3>Udemy Course Detected</h3>
+          <span class="ascii-glyph">[o]</span>
+          <h3>UDEMY COURSE DETECTED</h3>
           <p id="ready-course-title" class="detected-title">Loading title...</p>
         </div>
-        <button id="btn-extract" class="btn btn-primary btn-glow">
-          <span>Generate Course Dump</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-arrow"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        <button id="btn-extract" class="btn btn-primary">
+          <span>[ RUN EXTRACTION ]</span>
         </button>
       </div>
 
       <!-- STATE 3: Extracting/Loading -->
       <div id="panel-loading" class="panel hidden">
         <div class="loader-container">
-          <div class="spinner">
-            <div class="double-bounce1"></div>
-            <div class="double-bounce2"></div>
-          </div>
-          <h3>Extracting course structure</h3>
+          <span id="ascii-spinner" class="ascii-spinner">/</span>
+          <h3>EXTRACTING SYLLABUS</h3>
           <p id="loading-status">Connecting to page...</p>
           <div class="progress-bar-container">
             <div id="extraction-progress" class="progress-bar-fill"></div>
@@ -84,15 +66,15 @@
           <p id="success-course-instructor" class="instructor-name">by Instructor Name</p>
           <div class="stats-grid">
             <div class="stat-item">
-              <span class="stat-label">Duration</span>
+              <span class="stat-label">[ DURATION ]</span>
               <span id="stat-duration" class="stat-value">--</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">Sections</span>
+              <span class="stat-label">[ SECTIONS ]</span>
               <span id="stat-sections" class="stat-value">--</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">Lectures</span>
+              <span class="stat-label">[ LECTURES ]</span>
               <span id="stat-lectures" class="stat-value">--</span>
             </div>
           </div>
@@ -100,8 +82,9 @@
 
         <!-- Export Format Tabs -->
         <div class="tabs-container">
-          <button id="tab-btn-markdown" class="tab-btn active" data-tab="markdown">Markdown</button>
-          <button id="tab-btn-json" class="tab-btn" data-tab="json">JSON</button>
+          <button id="tab-btn-markdown" class="tab-btn active" data-tab="markdown">[ MARKDOWN ]</button>
+          <button id="tab-btn-json" class="tab-btn" data-tab="json">[ JSON ]</button>
+          <button id="tab-btn-ai" class="tab-btn" data-tab="ai">[ AI CONTEXT ]</button>
         </div>
 
         <!-- Output Display Area -->
@@ -111,9 +94,8 @@
 
         <!-- Actions -->
         <div class="actions-container">
-          <button id="btn-copy" class="btn btn-primary btn-copy-action">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-btn"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            <span id="copy-text">Copy to Clipboard</span>
+          <button id="btn-copy" class="btn btn-copy-action">
+            <span id="copy-text">[ COPY TO CLIPBOARD ]</span>
           </button>
         </div>
 
@@ -123,7 +105,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <span>Perfect for ChatGPT, Claude & Gemini</span>
+      <span>opencode.ai // monospace // no-gradients</span>
     </footer>
   </div>
   <script src="popup.js"></script>
