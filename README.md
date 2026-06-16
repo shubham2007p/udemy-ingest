@@ -181,17 +181,17 @@ Current Position: Section 2 - "Intro to Coding" > Lecture "What is Programming?"
 
 ## 🚀 Quick Start
 
-### Option 1 — Download ZIP
+### Option 1 — Direct Download (No Setup Needed)
 
-> **[⬇ Download Latest Release](https://github.com/shubham2007p/udemy-ingest/archive/refs/heads/main.zip)**
+> **[⬇ Download AI Ingest Extension (ZIP)](https://github.com/shubham2007p/udemy-ingest/raw/main/ai-ingest.zip)**
 
-1. Extract the ZIP to any folder
-2. Open Chrome → `chrome://extensions/`
-3. Enable **Developer mode** (top-right toggle)
-4. Click **Load unpacked**
-5. Select the `extension/` folder (the one containing `manifest.json`)
+1. Extract the downloaded ZIP file into a folder (e.g., `ai-ingest`).
+2. Open Google Chrome and navigate to `chrome://extensions/`.
+3. Enable **Developer mode** using the toggle switch in the top-right corner.
+4. Click the **Load unpacked** button in the top-left.
+5. Select the folder where you extracted the ZIP files (the folder containing `manifest.json` directly).
 
-### Option 2 — Clone with Git (Recommended)
+### Option 2 — Clone with Git (Recommended for Devs)
 
 ```bash
 git clone https://github.com/shubham2007p/udemy-ingest.git
