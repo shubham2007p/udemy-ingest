@@ -295,6 +295,8 @@ function generateJSON(data) {
     prerequisites: data.prerequisites,
     progress: data.progress,
     currentLecture: data.currentLecture,
+    lastCompletedLecture: data.lastCompletedLecture,
+    nextLecture: data.nextLecture,
     sections: data.sections
   }, null, 2);
 }
@@ -306,57 +308,93 @@ function generateAIContext(data) {
   ai += `# Learning Context: Udemy Course Progress\n`;
   ai += `* **Course:** ${data.title}\n`;
   if (data.instructor) ai += `* **Instructor:** ${data.instructor}\n`;
+  if (data.duration) ai += `* **Duration:** ${data.duration}\n`;
   
   if (data.progress) {
     const p = data.progress;
-    ai += `* **Current Progress:** ${p.percentComplete}% Complete (${p.completedLecturesCount}/${p.totalLecturesCount} lectures completed, ${p.completedSectionsCount}/${p.totalSectionsCount} sections completed)\n`;
+    ai += `* **Progress:** ${p.percentComplete}% complete (${p.completedLecturesCount}/${p.totalLecturesCount} lectures, ${p.completedSectionsCount}/${p.totalSectionsCount} sections)\n`;
   }
+  ai += `\n`;
+  
+  // P0 Rec 2: Clear lecture state separation
+  ai += `## Learning Position\n`;
   
   if (data.currentLecture) {
     const cur = data.currentLecture;
-    ai += `* **Current Position:** Section ${cur.sectionIndex + 1} - "${cur.sectionName}" > Lecture "${cur.title}"\n`;
+    ai += `* **Current Lecture:** "${cur.title}" (Section ${cur.sectionIndex + 1}: ${cur.sectionName})\n`;
+  }
+  
+  if (data.lastCompletedLecture) {
+    const last = data.lastCompletedLecture;
+    ai += `* **Last Completed Lecture:** "${last.title}" (Section ${last.sectionIndex + 1}: ${last.sectionName})\n`;
+  }
+  
+  if (data.nextLecture) {
+    const next = data.nextLecture;
+    ai += `* **Next Lecture:** "${next.title}" (Section ${next.sectionIndex + 1}: ${next.sectionName})\n`;
   }
   ai += `\n`;
   
-  ai += `## Completed Topics\n`;
-  let hasCompleted = false;
-  data.sections.forEach((sec, idx) => {
-    const completedLectures = sec.lectures.filter(l => l.completed);
-    if (completedLectures.length === sec.lectures.length && sec.lectures.length > 0) {
-      ai += `* **Section ${idx + 1}: ${sec.name}** - [All ${sec.lectures.length} lectures completed]\n`;
-      hasCompleted = true;
-    } else if (completedLectures.length > 0) {
-      ai += `* **Section ${idx + 1}: ${sec.name}**\n`;
-      completedLectures.forEach(l => {
-        ai += `  - [x] ${l.title}\n`;
-      });
-      hasCompleted = true;
-    }
-  });
-  if (!hasCompleted) {
-    ai += `* No topics completed yet.\n`;
+  // P0 Rec 1: Compact completed sections (section-level summary, not individual lectures)
+  ai += `## Completed Sections\n`;
+  const completedSections = data.sections.filter(s => s.completed);
+  const partialSections = data.sections.filter(s => !s.completed && s.completedCount > 0);
+  
+  if (completedSections.length === 0 && partialSections.length === 0) {
+    ai += `* No sections completed yet.\n`;
+  } else {
+    completedSections.forEach((sec, idx) => {
+      const secNum = data.sections.indexOf(sec) + 1;
+      ai += `* Section ${secNum}: ${sec.name} — ✅ All ${sec.totalCount} lectures completed\n`;
+    });
+    partialSections.forEach(sec => {
+      const secNum = data.sections.indexOf(sec) + 1;
+      ai += `* Section ${secNum}: ${sec.name} — ${sec.completedCount}/${sec.totalCount} lectures completed\n`;
+    });
   }
   ai += `\n`;
   
-  ai += `## Remaining Topics to Study\n`;
-  let hasRemaining = false;
-  data.sections.forEach((sec, idx) => {
-    const remainingLectures = sec.lectures.filter(l => !l.completed);
-    if (remainingLectures.length === sec.lectures.length && sec.lectures.length > 0) {
-      ai += `* **Section ${idx + 1}: ${sec.name}** - [All ${sec.lectures.length} lectures remaining]\n`;
-      hasRemaining = true;
-    } else if (remainingLectures.length > 0) {
-      ai += `* **Section ${idx + 1}: ${sec.name}**\n`;
-      remainingLectures.forEach(l => {
-        const currentMarker = l.isCurrent ? ' <-- CURRENT POSITION (Start here)' : '';
-        ai += `  - [ ] ${l.title}${currentMarker}\n`;
+  // Current section detail (only show lectures for the active section)
+  if (data.currentLecture) {
+    const curSecIdx = data.currentLecture.sectionIndex;
+    const curSec = data.sections[curSecIdx];
+    if (curSec) {
+      ai += `## Current Section Detail\n`;
+      ai += `**Section ${curSecIdx + 1}: ${curSec.name}** (${curSec.completedCount}/${curSec.totalCount} completed)\n`;
+      curSec.lectures.forEach(lec => {
+        const check = lec.completed ? '[x]' : '[ ]';
+        let marker = '';
+        if (lec.isCurrent) marker = ' ← CURRENT';
+        ai += `  - ${check} ${lec.title}${marker}\n`;
       });
-      hasRemaining = true;
+      ai += `\n`;
     }
-  });
-  if (!hasRemaining) {
-    ai += `* All topics completed!\n`;
   }
+  
+  // P0 Rec 1: Compact upcoming sections (section names only, no individual lectures)
+  ai += `## Upcoming Sections\n`;
+  const upcomingSections = data.sections.filter(s => !s.completed);
+  // Exclude the current section if it's already shown in detail above
+  const currentSecIdx = data.currentLecture ? data.currentLecture.sectionIndex : -1;
+  const futureOnly = upcomingSections.filter((s, i) => data.sections.indexOf(s) > currentSecIdx);
+  
+  if (futureOnly.length === 0) {
+    ai += `* All sections reached or completed!\n`;
+  } else {
+    futureOnly.forEach(sec => {
+      const secNum = data.sections.indexOf(sec) + 1;
+      ai += `* Section ${secNum}: ${sec.name} (${sec.totalCount} lectures)\n`;
+    });
+  }
+  ai += `\n`;
+  
+  // P1 Rec 3: AI Instruction Block
+  ai += `## Instructions for AI Assistant\n`;
+  ai += `- Assume the learner has understood all completed topics listed above.\n`;
+  ai += `- Do not re-explain or repeat completed material unless explicitly asked.\n`;
+  ai += `- Prioritize the current section and current lecture topic in your responses.\n`;
+  ai += `- When relevant, recommend or preview upcoming topics from the next sections.\n`;
+  ai += `- If the learner asks a question, frame your answer within the context of this course's curriculum.\n`;
   
   return ai.trim();
 }

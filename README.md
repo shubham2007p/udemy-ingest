@@ -120,17 +120,32 @@ Use this information as the learner's current course progress and learning conte
 # Learning Context: Udemy Course Progress
 * **Course:** Complete Python Bootcamp
 * **Instructor:** Hitesh Choudhary
-* **Current Progress:** 80% Complete (4/5 lectures completed, 1/2 sections completed)
-* **Current Position:** Section 2 - "Intro to Coding" > Lecture "What is Programming?"
+* **Duration:** 1h 26m
+* **Progress:** 80% complete (4/5 lectures, 1/2 sections)
 
-## Completed Topics
-* **Section 1: Introduction** - [All 3 lectures completed]
-* **Section 2: Intro to Coding**
+## Learning Position
+* **Current Lecture:** "What is Programming?" (Section 2: Intro to Coding)
+* **Last Completed Lecture:** "Meet your Instructor - Hitesh" (Section 2: Intro to Coding)
+* **Next Lecture:** "What is Programming?" (Section 2: Intro to Coding)
+
+## Completed Sections
+* Section 1: Introduction — ✅ All 3 lectures completed
+* Section 2: Intro to Coding — 1/2 lectures completed
+
+## Current Section Detail
+**Section 2: Intro to Coding** (1/2 completed)
   - [x] Meet your Instructor - Hitesh
+  - [ ] What is Programming? ← CURRENT
 
-## Remaining Topics to Study
-* **Section 2: Intro to Coding**
-  - [ ] What is Programming? <-- CURRENT POSITION (Start here)
+## Upcoming Sections
+* All sections reached or completed!
+
+## Instructions for AI Assistant
+- Assume the learner has understood all completed topics listed above.
+- Do not re-explain or repeat completed material unless explicitly asked.
+- Prioritize the current section and current lecture topic in your responses.
+- When relevant, recommend or preview upcoming topics from the next sections.
+- If the learner asks a question, frame your answer within the context of this course's curriculum.
 ```
 
 </details>

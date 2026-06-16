@@ -482,6 +482,33 @@ async function extractCourseData() {
   const remainingLecturesCount = totalLecturesCount - completedLecturesCount;
   const percentComplete = totalLecturesCount > 0 ? Math.round((completedLecturesCount / totalLecturesCount) * 100) : 0;
   
+  // Compute lastCompletedLecture and nextLecture by walking the flat lecture list
+  let lastCompletedLectureObj = null;
+  let nextLectureObj = null;
+  
+  for (let secIdx = 0; secIdx < enrichedSections.length; secIdx++) {
+    const sec = enrichedSections[secIdx];
+    for (let lecIdx = 0; lecIdx < sec.lectures.length; lecIdx++) {
+      const lec = sec.lectures[lecIdx];
+      if (lec.completed) {
+        lastCompletedLectureObj = {
+          id: lec.id || null,
+          title: lec.title,
+          sectionName: sec.name,
+          sectionIndex: secIdx
+        };
+      }
+      if (!lec.completed && !nextLectureObj) {
+        nextLectureObj = {
+          id: lec.id || null,
+          title: lec.title,
+          sectionName: sec.name,
+          sectionIndex: secIdx
+        };
+      }
+    }
+  }
+  
   const progressState = {
     completedLecturesCount,
     remainingLecturesCount,
@@ -507,7 +534,9 @@ async function extractCourseData() {
     prerequisites: metadata.prerequisites,
     sections: enrichedSections,
     progress: progressState,
-    currentLecture: currentLectureObj
+    currentLecture: currentLectureObj,
+    lastCompletedLecture: lastCompletedLectureObj,
+    nextLecture: nextLectureObj
   };
 }
 
