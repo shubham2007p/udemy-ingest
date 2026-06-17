@@ -197,6 +197,28 @@ Then load the `extension/` folder as unpacked in Chrome.
 
 <br>
 
+## 🔐 Security
+
+**Why**: The YouTube API key must never be hard‑coded in the extension source because the extension bundle is publicly visible to anyone who installs it. Exposing the key allows anyone to use your quota and may result in unexpected charges or quota exhaustion.
+
+**How to configure**:
+1. Open the extension popup and click the **Settings** (gear) icon.
+2. In the **YouTube API Key** field, paste your own API key obtained from the Google Cloud Console.
+3. Click **Save**. The key is stored in Chrome's local storage and will be used by the extension.
+
+**How to get your own YouTube API Key (v3)**:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Log in with your Google Account and create a new project (or select an existing one) from the project selector dropdown at the top.
+3. Open the navigation menu, go to **APIs & Services > Library**.
+4. In the API Library, search for **YouTube Data API v3** and click on it.
+5. Click the **Enable** button.
+6. Once enabled, go to **APIs & Services > Credentials** from the left sidebar.
+7. Click **+ Create Credentials** at the top and select **API key**.
+8. Copy the generated API key.
+9. *(Recommended)* Click **Restrict Key** on the API key settings to restrict its usage to the YouTube Data API v3 to secure it further.
+
+**Important**: Since the key you previously shared was included in the source code, it is now exposed. Please generate a new API key in the Google Cloud Console and replace the compromised one.
+
 ## 🔄 Keeping Updated
 
 One of the biggest pain points with sideloaded extensions is staying current. We solve this:
@@ -224,7 +246,7 @@ Once published to the Chrome Web Store, the extension will update automatically 
 | **v0.1** | ✅ Done | Curriculum extraction, Markdown export |
 | **v0.2** | ✅ Done | JSON export, one-click copy |
 | **v0.3** | ✅ Done | AI Context export, progress tracking, current position detection |
-| **v0.4** | 🔜 Next | YouTube support, progress history |
+| **v0.4** | ✅ Done | YouTube support, progress history |
 | **v1.0** | 📋 Planned | Multi-platform support (Coursera, edX), persistent learner profiles |
 
 <br>
@@ -246,7 +268,7 @@ Once published to the Chrome Web Store, the extension will update automatically 
 | :--- | :---: |
 | Udemy (Personal) | ✅ Supported |
 | Udemy Business / Enterprise | ✅ Supported |
-| YouTube | 🔜 Planned |
+| YouTube | ✅ Supported |
 | Coursera | 🔜 Planned |
 | edX | 🔜 Planned |
 

@@ -7,11 +7,11 @@ const YouTubeApi = {
     return new Promise((resolve) => {
       if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
         chrome.storage.local.get("youtubeApiKey", (result) => {
-          resolve(result.youtubeApiKey || "AIzaSyBAWIpcIy9RgknwPqrR7jDzHvecyWP4Kzg");
+          resolve(result.youtubeApiKey);
         });
       } else {
         // Fallback for Node.js unit tests or debugging
-        resolve(global.youtubeApiKey || "AIzaSyBAWIpcIy9RgknwPqrR7jDzHvecyWP4Kzg");
+        resolve(global.youtubeApiKey);
       }
     });
   },
