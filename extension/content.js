@@ -29,23 +29,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   else if (request.action === "getCourseInfo") {
     let title = "Learning Platform Page";
+    let type = "course";
     if (isUdemy && typeof UdemyExtractor !== "undefined") {
       title = UdemyExtractor.scrapeDOMMetadata().title || "Udemy Course Page";
     } else if (isYouTube && typeof YouTubeExtractor !== "undefined") {
       if (YouTubeExtractor.isPlaylistPage()) {
         const titleEl = document.querySelector('ytd-playlist-header-renderer h1#title, ytd-playlist-header-renderer #title a, h1#title');
         title = titleEl ? titleEl.innerText.trim() : document.title.replace(/ - YouTube$/i, "").trim();
+        type = "course";
       } else if (YouTubeExtractor.isWatchPageWithPlaylist()) {
         const panelEl = document.querySelector('ytd-playlist-panel-renderer');
         const titleEl = panelEl ? panelEl.querySelector('.title a, #title a, #header-description h3 a') : null;
         title = titleEl ? titleEl.innerText.trim() : (document.querySelector('ytd-playlist-panel-renderer #title')?.innerText.trim() || "YouTube Playlist");
+        type = "course";
       } else {
         // Standalone video
         const titleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, h1.ytd-watch-metadata, ytd-video-primary-info-renderer h1.title');
         title = titleEl ? titleEl.innerText.trim() : document.title.replace(/ - YouTube$/i, "").trim();
+        type = "video";
       }
     }
-    sendResponse({ isSupported: isSupported, platform: platform, title: title });
+    sendResponse({ isSupported: isSupported, platform: platform, title: title, type: type });
   } 
   
   else if (request.action === "extractCourseData") {

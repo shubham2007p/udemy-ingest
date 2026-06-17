@@ -182,7 +182,11 @@ async function showReadyState(tabId) {
     if (response && response.isSupported) {
       readyCourseTitle.textContent = response.title;
       if (response.platform === "youtube") {
-        readyStatusTitle.textContent = "YOUTUBE PLAYLIST DETECTED";
+        if (response.type === "video") {
+          readyStatusTitle.textContent = "YOUTUBE VIDEO DETECTED";
+        } else {
+          readyStatusTitle.textContent = "YOUTUBE PLAYLIST DETECTED";
+        }
       } else {
         readyStatusTitle.textContent = "UDEMY COURSE DETECTED";
       }
@@ -238,10 +242,15 @@ function displaySuccess(data) {
   statSections.textContent = data.sectionsCount;
   statLectures.textContent = data.lecturesCount;
   
-  // Update UI Labels depending on platform
+  // Update UI Labels depending on platform and type
   if (data.platform === "youtube") {
-    labelSections.textContent = "[ SECTIONS ]";
-    labelLectures.textContent = "[ VIDEOS ]";
+    if (data.type === "video") {
+      labelSections.textContent = "[ CHAPTERS ]";
+      labelLectures.textContent = "[ VIDEOS ]";
+    } else {
+      labelSections.textContent = "[ SECTIONS ]";
+      labelLectures.textContent = "[ VIDEOS ]";
+    }
   } else {
     labelSections.textContent = "[ SECTIONS ]";
     labelLectures.textContent = "[ LECTURES ]";
