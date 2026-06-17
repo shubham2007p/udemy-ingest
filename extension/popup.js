@@ -117,7 +117,9 @@ function isYouTubeUrl(url) {
     const host = urlObj.hostname;
     const path = urlObj.pathname;
     const params = urlObj.searchParams;
-    return host.includes("youtube.com") && (path.includes("/playlist") || path.includes("/watch")) && params.has("list");
+    return host.includes("youtube.com") && 
+           (path.includes("/playlist") || 
+            (path.includes("/watch") && (params.has("list") || params.has("v"))));
   } catch (e) {
     return false;
   }

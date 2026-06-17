@@ -11,7 +11,9 @@ function isUdemyPage() {
 
 function isYouTubePage() {
   return typeof YouTubeExtractor !== "undefined" && 
-         (YouTubeExtractor.isPlaylistPage() || YouTubeExtractor.isWatchPageWithPlaylist());
+         (YouTubeExtractor.isPlaylistPage() || 
+          YouTubeExtractor.isWatchPageWithPlaylist() || 
+          YouTubeExtractor.isWatchPageWithoutPlaylist());
 }
 
 // Listen for messages from popup.js
@@ -33,10 +35,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (YouTubeExtractor.isPlaylistPage()) {
         const titleEl = document.querySelector('ytd-playlist-header-renderer h1#title, ytd-playlist-header-renderer #title a, h1#title');
         title = titleEl ? titleEl.innerText.trim() : document.title.replace(/ - YouTube$/i, "").trim();
-      } else {
+      } else if (YouTubeExtractor.isWatchPageWithPlaylist()) {
         const panelEl = document.querySelector('ytd-playlist-panel-renderer');
         const titleEl = panelEl ? panelEl.querySelector('.title a, #title a, #header-description h3 a') : null;
         title = titleEl ? titleEl.innerText.trim() : (document.querySelector('ytd-playlist-panel-renderer #title')?.innerText.trim() || "YouTube Playlist");
+      } else {
+        // Standalone video
+        const titleEl = document.querySelector('h1.ytd-watch-metadata yt-formatted-string, h1.ytd-watch-metadata, ytd-video-primary-info-renderer h1.title');
+        title = titleEl ? titleEl.innerText.trim() : document.title.replace(/ - YouTube$/i, "").trim();
       }
     }
     sendResponse({ isSupported: isSupported, platform: platform, title: title });
@@ -56,7 +62,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     extractPromise
       .then(rawData => {
-        // Normalize the extracted data to standard schema
         const normalized = LearningSchema.normalize(rawData);
         sendResponse({ success: true, data: normalized });
       })
