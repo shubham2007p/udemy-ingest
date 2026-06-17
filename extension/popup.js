@@ -3,7 +3,8 @@ const panels = {
   unsupported: document.getElementById("panel-unsupported"),
   ready: document.getElementById("panel-ready"),
   loading: document.getElementById("panel-loading"),
-  success: document.getElementById("panel-success")
+  success: document.getElementById("panel-success"),
+  settings: document.getElementById("panel-settings")
 };
 
 const readyCourseTitle = document.getElementById("ready-course-title");
@@ -29,11 +30,18 @@ const outputView = document.getElementById("output-view");
 const btnCopy = document.getElementById("btn-copy");
 const copyText = document.getElementById("copy-text");
 
+// Settings DOM elements
+const btnSettingsToggle = document.getElementById("btn-settings-toggle");
+const inputApiKey = document.getElementById("input-api-key");
+const btnSaveSettings = document.getElementById("btn-save-settings");
+const btnCancelSettings = document.getElementById("btn-cancel-settings");
+
 // State
 let activeTabId = null;
 let currentCourseData = null;
 let activeFormat = "markdown";
 let spinnerInterval = null;
+let previousPanel = "unsupported";
 
 // Initialize
 document.addEventListener("DOMContentLoaded", async () => {
@@ -42,6 +50,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   activeTabId = tab.id;
   
+  // Initial load of settings key
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get("youtubeApiKey", (res) => {
+      if (res.youtubeApiKey) {
+        inputApiKey.value = res.youtubeApiKey;
+      }
+    });
+  }
+
   if (isSupportedUrl(tab.url)) {
     showPanel("loading");
     startSpinner();
@@ -66,6 +83,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           files: [
             "schemas/learningSchema.js",
             "extractors/udemy.js",
+            "youtubeApi.js",
+            "playlistService.js",
+            "videoService.js",
+            "pageStateExtractor.js",
             "extractors/youtube.js",
             "content.js"
           ]
@@ -96,6 +117,34 @@ tabBtnMarkdown.addEventListener("click", () => switchTab("markdown"));
 tabBtnJson.addEventListener("click", () => switchTab("json"));
 tabBtnAi.addEventListener("click", () => switchTab("ai"));
 btnCopy.addEventListener("click", copyToClipboard);
+
+btnSettingsToggle.addEventListener("click", () => {
+  const currentActivePanel = Object.keys(panels).find(key => !panels[key].classList.contains("hidden") && key !== "settings");
+  if (currentActivePanel) {
+    previousPanel = currentActivePanel;
+  }
+  
+  if (!panels.settings.classList.contains("hidden")) {
+    showPanel(previousPanel);
+  } else {
+    showPanel("settings");
+  }
+});
+
+btnSaveSettings.addEventListener("click", () => {
+  const key = inputApiKey.value.trim();
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({ youtubeApiKey: key }, () => {
+      showPanel(previousPanel);
+    });
+  } else {
+    showPanel(previousPanel);
+  }
+});
+
+btnCancelSettings.addEventListener("click", () => {
+  showPanel(previousPanel);
+});
 
 // Helpers
 function isUdemyUrl(url) {
@@ -204,9 +253,9 @@ async function startExtraction() {
   
   const statusInterval = setInterval(() => {
     const statuses = [
-      { text: "Scanning elements...", pct: 50 },
-      { text: "Reading playlist/curriculum...", pct: 75 },
-      { text: "Analyzing progress state...", pct: 90 }
+      { text: "Connecting to API...", pct: 50 },
+      { text: "Fetching resource details...", pct: 75 },
+      { text: "Consolidating page state...", pct: 90 }
     ];
     const currentPct = parseInt(extractionProgress.style.width, 10);
     const nextStatus = statuses.find(s => s.pct > currentPct);
@@ -220,8 +269,15 @@ async function startExtraction() {
     stopSpinner();
     if (chrome.runtime.lastError || !response || !response.success) {
       const errMsg = (response && response.error) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || "Failed to extract";
-      alert("Extraction Error: " + errMsg);
-      showReadyState(activeTabId);
+      
+      if (errMsg === "YOUTUBE_API_KEY_MISSING" || errMsg === "YOUTUBE_API_KEY_INVALID") {
+        alert(errMsg === "YOUTUBE_API_KEY_MISSING" ? "YouTube API Key is missing. Opening settings..." : "YouTube API Key is invalid. Opening settings...");
+        previousPanel = "ready";
+        showPanel("settings");
+      } else {
+        alert("Extraction Error: " + errMsg);
+        showReadyState(activeTabId);
+      }
       return;
     }
     

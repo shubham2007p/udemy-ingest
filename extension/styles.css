@@ -418,3 +418,83 @@ body {
   border-top: 1px solid var(--border-color);
   background: var(--bg-surface-soft);
 }
+
+/* Settings View & Elements */
+.btn-settings-toggle {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  padding: 4px;
+  border-radius: var(--radius-interactive);
+}
+
+.btn-settings-toggle:hover {
+  color: var(--color-text-main);
+  background-color: var(--bg-surface-soft);
+}
+
+.form-group {
+  width: 100%;
+  text-align: left;
+  margin-top: 16px;
+}
+
+.form-label {
+  font-size: 11px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-text-muted);
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-interactive);
+  background: var(--bg-surface-soft);
+  color: var(--color-text-main);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-strong);
+}
+
+.settings-guide {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  text-align: left;
+  line-height: 1.45;
+  margin-top: 16px;
+  background: var(--bg-surface-soft);
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-interactive);
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface);
+  color: var(--color-text-main);
+  border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-strong);
+}

@@ -13,12 +13,13 @@
   <div class="app-container" id="app-container">
     
     <!-- Header: OpenCode Terminal style -->
-    <header class="app-header">
+    <header class="app-header" style="position: relative;">
       <div class="logo-wrapper">
         <span class="logo-icon">[a_i]</span>
         <span class="app-title">ai-ingest</span>
       </div>
-      <span class="app-subtitle">v1.0.0 // LEARNING_CONTEXT_EXPORTER</span>
+      <span class="app-subtitle">v1.2.0 // LEARNING_CONTEXT_EXPORTER</span>
+      <button id="btn-settings-toggle" class="btn-settings-toggle">[⚙]</button>
     </header>
 
     <!-- Main Content Area -->
@@ -101,6 +102,37 @@
 
       </div>
 
+      <!-- STATE 5: Settings / API Key Configuration -->
+      <div id="panel-settings" class="panel hidden">
+        <div class="info-card">
+          <span class="ascii-glyph">[⚙]</span>
+          <h3>SETTINGS: YOUTUBE API</h3>
+          <p>This extension requires a YouTube Data API v3 Key to reliably extract playlist and video metadata.</p>
+          
+          <div class="form-group">
+            <label for="input-api-key" class="form-label">[ API KEY ]</label>
+            <input type="password" id="input-api-key" placeholder="Enter your YouTube API Key" class="form-input" />
+          </div>
+          
+          <div class="settings-guide">
+            How to get a key:<br>
+            1. Go to Google Cloud Console.<br>
+            2. Enable "YouTube Data API v3" under APIs Library.<br>
+            3. Create an API Key under Credentials.<br>
+            4. Paste it above.
+          </div>
+        </div>
+        
+        <div class="settings-actions">
+          <button id="btn-save-settings" class="btn btn-primary">
+            <span>[ SAVE ]</span>
+          </button>
+          <button id="btn-cancel-settings" class="btn btn-secondary">
+            <span>[ CANCEL ]</span>
+          </button>
+        </div>
+      </div>
+
     </main>
 
     <!-- Footer -->
@@ -109,6 +141,10 @@
     </footer>
   </div>
   <script src="schemas/learningSchema.js"></script>
+  <script src="youtubeApi.js"></script>
+  <script src="playlistService.js"></script>
+  <script src="videoService.js"></script>
+  <script src="pageStateExtractor.js"></script>
   <script src="generators/markdownGenerator.js"></script>
   <script src="generators/jsonGenerator.js"></script>
   <script src="generators/aiContextGenerator.js"></script>
