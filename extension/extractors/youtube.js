@@ -349,8 +349,17 @@ const YouTubeExtractor = {
       }
     }
     if (clicked) {
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise(resolve => setTimeout(resolve, 350));
     }
+  },
+
+  cleanDescription(text) {
+    if (!text) return "";
+    let t = text.trim();
+    t = t.replace(/\s*\.\.\.\s*more\s*$/i, "");
+    t = t.replace(/\s*show\s*less\s*$/i, "");
+    t = t.replace(/\s*show\s*more\s*$/i, "");
+    return t.trim();
   },
 
   // Scrape playlist creator with cascading fallbacks
@@ -571,7 +580,7 @@ const YouTubeExtractor = {
     if (!description) {
       await this.expandDescriptionDOM();
       const descEl = document.querySelector('ytd-playlist-header-renderer #description-text, ytd-playlist-header-renderer #description');
-      description = descEl ? descEl.innerText.trim() : "";
+      description = descEl ? this.cleanDescription(descEl.innerText) : "";
     }
 
     const rawVideos = [];
@@ -602,7 +611,7 @@ const YouTubeExtractor = {
           const vUrl = titleLink.href || "";
 
           let vDuration = "";
-          const durationEl = el.querySelector('ytd-thumbnail-overlay-time-status-renderer span, #time-status span, .ytd-thumbnail-overlay-time-status-renderer');
+          const durationEl = el.querySelector('ytd-thumbnail-overlay-time-status-renderer badge-shape div, ytd-thumbnail-overlay-time-status-renderer badge-shape, ytd-thumbnail-overlay-time-status-renderer span, #time-status span, .ytd-thumbnail-overlay-time-status-renderer, badge-shape div, badge-shape');
           if (durationEl) {
             vDuration = durationEl.innerText.trim();
           }
@@ -729,12 +738,16 @@ const YouTubeExtractor = {
     }
 
     // P0 requirement: Only calculate playlist duration when trusted header exists or every video duration is valid
+    let durationSource = "Source C: Fallback / Incomplete";
     let finalDuration = this.scrapePlaylistHeaderDuration(ytInitialData);
-    if (!finalDuration) {
+    if (finalDuration) {
+      durationSource = "Source A: Playlist metadata";
+    } else {
       const everyDurationIsValid = uniqueVideos.every(v => this.parseTimeToSeconds(v.duration) > 0);
       if (everyDurationIsValid && uniqueVideos.length > 0 && !(totalVideosInPlaylist > 0 && totalCount < totalVideosInPlaylist)) {
         finalDuration = this.formatTotalDuration(totalSeconds);
         finalDuration = this.checkPartialDuration(totalCount, finalDuration, ytInitialData);
+        durationSource = "Source B: Sum of video durations";
       } else {
         if (totalVideosInPlaylist > 0 && totalCount < totalVideosInPlaylist) {
           finalDuration = `Incomplete (${totalCount}/${totalVideosInPlaylist} loaded)`;
@@ -743,6 +756,22 @@ const YouTubeExtractor = {
         }
       }
     }
+
+    console.log("[AIIngest] Playlist Duration Audit:", {
+      playlistTitle: title || "Unknown Playlist",
+      totalVideos: totalVideosInPlaylist || uniqueVideos.length,
+      durationsFound: validDurationsCount,
+      durationsMissing: missingDurationsCount,
+      totalSeconds: totalSeconds,
+      finalDuration: finalDuration,
+      source: durationSource
+    });
+
+    console.log("[AIIngest] Playlist Individual Video Durations:", uniqueVideos.map(v => ({
+      title: v.title,
+      rawDuration: v.duration,
+      parsedSeconds: this.parseTimeToSeconds(v.duration)
+    })));
 
     return {
       platform: "youtube",
@@ -806,7 +835,7 @@ const YouTubeExtractor = {
         await this.expandDescriptionDOM();
         const descEl = document.querySelector('#description-inline-expander, #description-text, ytd-text-inline-expander');
         if (descEl) {
-          currentVideoDescription = descEl.innerText.trim();
+          currentVideoDescription = this.cleanDescription(descEl.innerText);
         }
       }
     } catch (e) {
@@ -870,7 +899,7 @@ const YouTubeExtractor = {
           const vUrl = linkEl ? linkEl.href : window.location.href;
 
           let vDuration = "";
-          const durationEl = el.querySelector('#duration');
+          const durationEl = el.querySelector('#duration, ytd-thumbnail-overlay-time-status-renderer badge-shape div, ytd-thumbnail-overlay-time-status-renderer badge-shape, ytd-thumbnail-overlay-time-status-renderer span, badge-shape div, badge-shape');
           if (durationEl) {
             vDuration = durationEl.innerText.trim();
           }
@@ -1031,12 +1060,16 @@ const YouTubeExtractor = {
     }
 
     // P0 requirement: Only calculate playlist duration when trusted header exists or every video duration is valid
+    let durationSource = "Source C: Fallback / Incomplete";
     let finalDuration = this.scrapePlaylistHeaderDuration(ytInitialData);
-    if (!finalDuration) {
+    if (finalDuration) {
+      durationSource = "Source A: Playlist metadata";
+    } else {
       const everyDurationIsValid = uniqueVideos.every(v => this.parseTimeToSeconds(v.duration) > 0);
       if (everyDurationIsValid && uniqueVideos.length > 0 && !(totalVideosInPlaylist > 0 && totalCount < totalVideosInPlaylist)) {
         finalDuration = this.formatTotalDuration(totalSeconds);
         finalDuration = this.checkPartialDuration(totalCount, finalDuration, ytInitialData);
+        durationSource = "Source B: Sum of video durations";
       } else {
         if (totalVideosInPlaylist > 0 && totalCount < totalVideosInPlaylist) {
           finalDuration = `Incomplete (${totalCount}/${totalVideosInPlaylist} loaded)`;
@@ -1045,6 +1078,22 @@ const YouTubeExtractor = {
         }
       }
     }
+
+    console.log("[AIIngest] Playlist Duration Audit:", {
+      playlistTitle: title || "Unknown Playlist",
+      totalVideos: totalVideosInPlaylist || uniqueVideos.length,
+      durationsFound: validDurationsCount,
+      durationsMissing: missingDurationsCount,
+      totalSeconds: totalSeconds,
+      finalDuration: finalDuration,
+      source: durationSource
+    });
+
+    console.log("[AIIngest] Playlist Individual Video Durations:", uniqueVideos.map(v => ({
+      title: v.title,
+      rawDuration: v.duration,
+      parsedSeconds: this.parseTimeToSeconds(v.duration)
+    })));
 
     return {
       platform: "youtube",
@@ -1165,7 +1214,7 @@ const YouTubeExtractor = {
         await this.expandDescriptionDOM();
         const descEl = document.querySelector('#description-inline-expander, #description-text, ytd-text-inline-expander');
         if (descEl) {
-          description = descEl.innerText.trim();
+          description = this.cleanDescription(descEl.innerText);
         }
       }
     } catch (e) {

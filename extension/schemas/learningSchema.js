@@ -10,6 +10,29 @@ const LearningSchema = {
     const durationSecs = LearningSchema.parseDurationToSeconds(raw.duration);
     const currentProgress = raw.progress ? LearningSchema.normalizeProgress(raw.progress) : LearningSchema.defaultProgress();
     
+    // Extract videoId if platform is youtube
+    let videoId = raw.videoId || "";
+    if (!videoId && raw.platform === "youtube" && raw.url) {
+      try {
+        let cleanUrl = raw.url;
+        if (cleanUrl.startsWith("/")) {
+          cleanUrl = "https://www.youtube.com" + cleanUrl;
+        }
+        const u = new URL(cleanUrl);
+        if (u.hostname.includes("youtube.com")) {
+          videoId = u.searchParams.get("v") || "";
+        } else if (u.hostname.includes("youtu.be")) {
+          videoId = u.pathname.substring(1) || "";
+        }
+      } catch (e) {}
+      if (!videoId) {
+        const match = raw.url.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (match) {
+          videoId = match[1];
+        }
+      }
+    }
+
     // Defensive Validation Checks
     if (currentProgress.currentTimeSeconds > durationSecs && durationSecs > 0) {
       console.warn(`[AIIngest] Validation Warning: currentTimeSeconds (${currentProgress.currentTimeSeconds}) exceeds duration (${durationSecs}). Capping current position.`);
@@ -36,6 +59,7 @@ const LearningSchema = {
       description: raw.description || "",
       duration: LearningSchema.normalizeDuration(raw.duration),
       url: raw.url || "",
+      videoId: videoId,
       publishDate: raw.publishDate || "", // Optional, YouTube single video publish date
       sectionsCount: typeof raw.sectionsCount === "number" ? raw.sectionsCount : 0,
       lecturesCount: lecturesCount,
@@ -47,7 +71,7 @@ const LearningSchema = {
       lastCompletedLecture: raw.lastCompletedLecture ? LearningSchema.normalizeLectureRef(raw.lastCompletedLecture) : null,
       nextLecture: raw.nextLecture ? LearningSchema.normalizeLectureRef(raw.nextLecture) : null,
       chapters: Array.isArray(raw.chapters) ? raw.chapters.map(c => ({
-        title: c.title || "",
+        title: LearningSchema.cleanChapterTitle(c.title),
         timestamp: typeof c.timestamp === "number" ? c.timestamp : 0, // start time in seconds
         timeStr: c.timeStr || "" // readable timestamp e.g. "05:32"
       })) : []
@@ -210,6 +234,25 @@ const LearningSchema = {
     }
     
     return `${mins}m`;
+  },
+
+  /**
+   * Helper: Cleans up chapter titles by removing emojis, symbols, empty parentheses, and leading/trailing punctuation.
+   */
+  cleanChapterTitle(title) {
+    if (!title) return "";
+    let t = title.trim();
+    // Remove emojis, symbols and formatting characters at the start (ignoring letters, numbers, punctuation, spaces)
+    try {
+      t = t.replace(/^[^\p{L}\p{N}\p{P}\s]+/gu, "");
+    } catch (e) {
+      t = t.replace(/^[^\w\s\d\p{P}]+/gu, "");
+    }
+    // Remove empty parentheses
+    t = t.replace(/\(\s*\)/g, "");
+    // Remove leading/trailing colons, dashes, pipes, and whitespace
+    t = t.replace(/^[-–—:|#\s]+/, "").replace(/[-–—:|#\s]+$/, "");
+    return t.trim();
   }
 };
 

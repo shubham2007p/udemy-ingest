@@ -24,7 +24,7 @@ const MarkdownGenerator = {
     if (isYouTube && isVideo) {
       const currentTimestamp = this.formatSecondsToTimeStr(data.progress?.currentTimeSeconds);
       const remainingTime = this.formatSecondsToTimeStr(data.progress?.remainingTimeSeconds);
-      const videoId = data.url ? (typeof YouTubeExtractor !== "undefined" ? YouTubeExtractor.getVideoIdFromUrl(data.url) : "") : "";
+      const videoId = data.videoId || "";
       
       let md = `# Video Information\n\n`;
       md += `Title:\n${data.title}\n\n`;

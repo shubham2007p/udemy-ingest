@@ -9,7 +9,7 @@ const JsonGenerator = {
     if (data.platform === "youtube") {
       if (data.type === "video") {
         // Format for YouTube Single Video
-        const videoId = data.url ? (typeof YouTubeExtractor !== "undefined" ? YouTubeExtractor.getVideoIdFromUrl(data.url) : "") : "";
+        const videoId = data.videoId || "";
         const durationSecs = typeof LearningSchema !== "undefined" ? LearningSchema.parseDurationToSeconds(data.duration) : 0;
         
         return JSON.stringify({
