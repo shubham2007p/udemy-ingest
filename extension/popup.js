@@ -53,9 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initial load of settings key
   if (chrome.storage && chrome.storage.local) {
     chrome.storage.local.get("youtubeApiKey", (res) => {
-      if (res.youtubeApiKey) {
-        inputApiKey.value = res.youtubeApiKey;
-      }
+      inputApiKey.value = res.youtubeApiKey || "AIzaSyBAWIpcIy9RgknwPqrR7jDzHvecyWP4Kzg";
     });
   }
 
