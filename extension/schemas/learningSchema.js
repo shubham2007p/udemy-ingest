@@ -8,7 +8,7 @@ const LearningSchema = {
    */
   normalize(raw) {
     const durationSecs = LearningSchema.parseDurationToSeconds(raw.duration);
-    const currentProgress = raw.progress ? LearningSchema.normalizeProgress(raw.progress) : LearningSchema.defaultProgress();
+    const currentProgress = raw.progress ? LearningSchema.normalizeProgress(raw.progress, durationSecs) : LearningSchema.defaultProgress();
     
     // Extract videoId if platform is youtube
     let videoId = raw.videoId || "";
@@ -34,7 +34,7 @@ const LearningSchema = {
     }
 
     // Defensive Validation Checks
-    if (currentProgress.currentTimeSeconds > durationSecs && durationSecs > 0) {
+    if (currentProgress.currentTimeSeconds !== null && durationSecs > 0 && currentProgress.currentTimeSeconds > durationSecs) {
       console.warn(`[AIIngest] Validation Warning: currentTimeSeconds (${currentProgress.currentTimeSeconds}) exceeds duration (${durationSecs}). Capping current position.`);
       currentProgress.currentTimeSeconds = durationSecs;
       currentProgress.percentComplete = 100;
@@ -96,9 +96,62 @@ const LearningSchema = {
     };
   },
 
-  normalizeProgress(p) {
-    const percent = typeof p.percentComplete === "number" ? p.percentComplete : 0;
-    const clampedPercent = Math.max(0, Math.min(Math.round(percent), 100));
+  normalizeProgress(p, durationSecs = 0) {
+    if (!p) return this.defaultProgress();
+
+    let currentTime = p.currentTimeSeconds;
+    let remainingTime = p.remainingTimeSeconds;
+    
+    // Check for missing/invalid current time
+    if (currentTime === undefined || currentTime === null || isNaN(currentTime)) {
+      currentTime = null;
+    } else {
+      currentTime = Math.round(currentTime);
+    }
+    
+    let percentComplete = null;
+
+    if (currentTime !== null && durationSecs > 0) {
+      if (currentTime < 0 || currentTime > durationSecs) {
+        // Out of bounds progress
+        percentComplete = "Unknown";
+        currentTime = null;
+        remainingTime = null;
+      } else {
+        percentComplete = Math.round((currentTime / durationSecs) * 100);
+        percentComplete = Math.max(0, Math.min(percentComplete, 100));
+      }
+    } else if (typeof p.percentComplete === "number" && !isNaN(p.percentComplete)) {
+      if (p.percentComplete < 0 || p.percentComplete > 100) {
+        percentComplete = "Unknown";
+      } else {
+        percentComplete = Math.round(p.percentComplete);
+      }
+    } else if (p.percentComplete === "Unknown") {
+      percentComplete = "Unknown";
+    }
+
+    if (percentComplete === null || percentComplete === "Unknown") {
+      return {
+        completedLecturesCount: Math.max(0, p.completedLecturesCount || 0),
+        remainingLecturesCount: Math.max(0, p.remainingLecturesCount || 0),
+        totalLecturesCount: Math.max(0, p.totalLecturesCount || 0),
+        completedSectionsCount: Math.max(0, p.completedSectionsCount || 0),
+        remainingSectionsCount: Math.max(0, p.remainingSectionsCount || 0),
+        totalSectionsCount: Math.max(0, p.totalSectionsCount || 0),
+        percentComplete: "Unknown",
+        currentTimeSeconds: null,
+        remainingTimeSeconds: null
+      };
+    }
+
+    // If remaining time is missing, calculate it
+    if ((remainingTime === undefined || remainingTime === null || isNaN(remainingTime)) && durationSecs > 0 && currentTime !== null) {
+      remainingTime = Math.max(0, durationSecs - currentTime);
+    } else if (remainingTime !== null && remainingTime !== undefined) {
+      remainingTime = Math.max(0, Math.round(remainingTime));
+    }
+
     return {
       completedLecturesCount: Math.max(0, p.completedLecturesCount || 0),
       remainingLecturesCount: Math.max(0, p.remainingLecturesCount || 0),
@@ -106,9 +159,9 @@ const LearningSchema = {
       completedSectionsCount: Math.max(0, p.completedSectionsCount || 0),
       remainingSectionsCount: Math.max(0, p.remainingSectionsCount || 0),
       totalSectionsCount: Math.max(0, p.totalSectionsCount || 0),
-      percentComplete: clampedPercent,
-      currentTimeSeconds: Math.max(0, Math.round(p.currentTimeSeconds || 0)),
-      remainingTimeSeconds: Math.max(0, Math.round(p.remainingTimeSeconds || 0))
+      percentComplete: percentComplete,
+      currentTimeSeconds: currentTime,
+      remainingTimeSeconds: remainingTime
     };
   },
 
@@ -133,7 +186,8 @@ const LearningSchema = {
       sectionName: ref.sectionName || "",
       sectionIndex: typeof ref.sectionIndex === "number" ? ref.sectionIndex : 0,
       url: ref.url || "",
-      description: ref.description || ""
+      description: ref.description || "",
+      progress: ref.progress ? LearningSchema.normalizeProgress(ref.progress, ref.progress.durationSeconds || 0) : null
     };
   },
 
@@ -175,7 +229,7 @@ const LearningSchema = {
       if (revParts.length >= 2) seconds += revParts[1] * 60;
       if (revParts.length >= 3) seconds += revParts[2] * 3600;
       if (revParts.length >= 4) seconds += revParts[3] * 86400;
-      return seconds;
+      return Math.abs(seconds);
     }
     
     let seconds = 0;
@@ -196,7 +250,7 @@ const LearningSchema = {
       seconds = parseFloat(s);
     }
     
-    return seconds;
+    return Math.abs(seconds);
   },
 
   /**
@@ -253,6 +307,137 @@ const LearningSchema = {
     // Remove leading/trailing colons, dashes, pipes, and whitespace
     t = t.replace(/^[-–—:|#\s]+/, "").replace(/[-–—:|#\s]+$/, "");
     return t.trim();
+  },
+
+  /**
+   * Helper: Infers learning topics/concepts from a title using non-LLM heuristics.
+   */
+  inferTopicsFromTitle(title) {
+    if (!title) return [];
+    
+    const parts = title.split(/[-–—|:/,]/);
+    const topics = [];
+    
+    parts.forEach(part => {
+      let t = part.trim();
+      
+      // Filter out prefixes like "DAY 5", "Lecture 3", "Section 2", etc.
+      t = t.replace(/^(?:day|lecture|lec|video|sec|section|part|ch|chapter)\s*\d+\s*(?:of\s*\d+)?\b/i, "");
+      
+      // Clean up punctuation and whitespace (keeping parentheses and brackets)
+      t = t.replace(/^[^a-zA-Z0-9([{]+/, "").replace(/[^a-zA-Z0-9)\]}]+$/, "").trim();
+      
+      if (t.length > 2 && !/^(and|the|for|with|from|into|onto|than|then|versus|vs)$/i.test(t)) {
+        if (isNaN(Number(t))) {
+          // Capitalize formatted title
+          const formatted = t.split(/\s+/).map(word => {
+            if (/^(and|or|of|in|on|at|to|a|an|the|for|with|vs)$/i.test(word)) return word.toLowerCase();
+            return word.charAt(0).toUpperCase() + word.slice(1);
+          }).join(" ");
+          
+          if (formatted && !topics.includes(formatted)) {
+            topics.push(formatted);
+          }
+        }
+      }
+    });
+
+    if (topics.length === 0) {
+      let cleanTitle = title.replace(/^(?:day|lecture|lec|video|sec|section|part|ch|chapter)\s*\d+\s*(?:of\s*\d+)?\b/i, "").trim();
+      cleanTitle = cleanTitle.replace(/^[^a-zA-Z0-9([{]+/, "").replace(/[^a-zA-Z0-9)\]}]+$/, "").trim();
+      if (cleanTitle.length > 2) {
+        topics.push(cleanTitle);
+      }
+    }
+    
+    return topics;
+  },
+
+  /**
+   * Helper: Extracts current focus and upcoming forecasts from chapters or playlist items.
+   */
+  extractLearningFocusAndUpcoming(data) {
+    let focus = [];
+    let upcoming = [];
+    
+    if (data.platform === "youtube") {
+      if (data.type === "video") {
+        const currentTime = data.progress?.currentTimeSeconds || 0;
+        let activeChapter = null;
+        let activeChapterIdx = -1;
+        
+        if (Array.isArray(data.chapters) && data.chapters.length > 0) {
+          for (let i = 0; i < data.chapters.length; i++) {
+            const ch = data.chapters[i];
+            const nextCh = data.chapters[i + 1];
+            if (currentTime >= ch.timestamp && (!nextCh || currentTime < nextCh.timestamp)) {
+              activeChapter = ch;
+              activeChapterIdx = i;
+              break;
+            }
+          }
+          
+          if (activeChapter) {
+            focus = this.inferTopicsFromTitle(activeChapter.title);
+            const nextChapters = data.chapters.slice(activeChapterIdx + 1, activeChapterIdx + 4);
+            nextChapters.forEach(ch => {
+              upcoming = upcoming.concat(this.inferTopicsFromTitle(ch.title));
+            });
+          }
+        }
+        
+        if (focus.length === 0) {
+          focus = this.inferTopicsFromTitle(data.title);
+        }
+      } else if (data.type === "course") {
+        if (data.currentLecture) {
+          focus = this.inferTopicsFromTitle(data.currentLecture.title);
+          
+          const lectures = data.sections?.[0]?.lectures || [];
+          const currentIdx = lectures.findIndex(lec => lec.videoId === data.currentLecture.videoId || lec.id === data.currentLecture.id);
+          if (currentIdx !== -1) {
+            const nextLectures = lectures.slice(currentIdx + 1, currentIdx + 4);
+            nextLectures.forEach(lec => {
+              upcoming = upcoming.concat(this.inferTopicsFromTitle(lec.title));
+            });
+          } else {
+            const incomplete = lectures.filter(lec => !lec.completed).slice(0, 3);
+            incomplete.forEach(lec => {
+              upcoming = upcoming.concat(this.inferTopicsFromTitle(lec.title));
+            });
+          }
+        } else {
+          focus = this.inferTopicsFromTitle(data.title);
+          const lectures = data.sections?.[0]?.lectures || [];
+          lectures.slice(0, 3).forEach(lec => {
+            upcoming = upcoming.concat(this.inferTopicsFromTitle(lec.title));
+          });
+        }
+      }
+    } else {
+      // Udemy Fallback
+      if (data.currentLecture) {
+        focus = this.inferTopicsFromTitle(data.currentLecture.title);
+        const lectures = data.sections?.flatMap(s => s.lectures || []) || [];
+        const currentIdx = lectures.findIndex(lec => lec.id === data.currentLecture.id);
+        if (currentIdx !== -1) {
+          const nextLectures = lectures.slice(currentIdx + 1, currentIdx + 4);
+          nextLectures.forEach(lec => {
+            upcoming = upcoming.concat(this.inferTopicsFromTitle(lec.title));
+          });
+        }
+      } else {
+        focus = this.inferTopicsFromTitle(data.title);
+      }
+    }
+    
+    upcoming = upcoming.filter(topic => !focus.includes(topic));
+    const uniqueUpcoming = [...new Set(upcoming)];
+    
+    return {
+      focus: [...new Set(focus)],
+      upcoming: uniqueUpcoming.slice(0, 5)
+    };
   }
 };
 

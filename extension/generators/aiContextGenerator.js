@@ -22,23 +22,45 @@ const AiContextGenerator = {
     
     // Standalone YouTube Video Layout
     if (isYouTube && isVideo) {
-      const currentTimestamp = this.formatSecondsToTimeStr(data.progress?.currentTimeSeconds);
-      const remainingTime = this.formatSecondsToTimeStr(data.progress?.remainingTimeSeconds);
+      const hasValidProgress = data.progress && data.progress.percentComplete !== "Unknown";
+      const currentTimestamp = hasValidProgress ? this.formatSecondsToTimeStr(data.progress.currentTimeSeconds) : "Unknown";
+      const remainingTime = hasValidProgress ? this.formatSecondsToTimeStr(data.progress.remainingTimeSeconds) : "Unknown";
+      const progressPercentStr = hasValidProgress ? `${data.progress.percentComplete}%` : "Unknown";
       
       let ai = `Use this information as the learner's current learning context.\n\n`;
       ai += `# Learning Context: YouTube Video\n\n`;
       ai += `Video:\n${data.title}\n\n`;
       ai += `Creator:\n${data.instructor}\n\n`;
       ai += `Duration:\n${data.duration}\n\n`;
-      ai += `Progress:\n${data.progress?.percentComplete || 0}%\n\n`;
+      ai += `Progress:\n${progressPercentStr}\n\n`;
       ai += `Current Position:\n${currentTimestamp}\n\n`;
       ai += `Remaining Time:\n${remainingTime}\n\n`;
       ai += `---\n\n`;
       ai += `# Video Description\n\n${data.description || ""}\n\n`;
       ai += `---\n\n`;
+      
+      // Smart Inferred Focus
+      const topics = typeof LearningSchema !== "undefined" ? LearningSchema.extractLearningFocusAndUpcoming(data) : { focus: [], upcoming: [] };
+      ai += `# Current Learning Focus\n\n`;
+      if (topics.focus.length > 0) {
+        topics.focus.forEach(f => ai += `* ${f}\n`);
+      } else {
+        ai += `* None\n`;
+      }
+      ai += `\n`;
+      
+      ai += `# Upcoming Topics\n\n`;
+      if (topics.upcoming.length > 0) {
+        topics.upcoming.forEach(u => ai += `* ${u}\n`);
+      } else {
+        ai += `* None\n`;
+      }
+      ai += `\n`;
+      
+      ai += `---\n\n`;
       ai += `# Chapters Covered\n\n`;
       
-      const completedChapters = Array.isArray(data.chapters) ? data.chapters.filter(ch => (data.progress?.currentTimeSeconds || 0) >= ch.timestamp) : [];
+      const completedChapters = Array.isArray(data.chapters) && hasValidProgress ? data.chapters.filter(ch => (data.progress.currentTimeSeconds) >= ch.timestamp) : [];
       if (completedChapters.length > 0) {
         completedChapters.forEach(ch => {
           ai += `* ${ch.title}\n`;
@@ -51,7 +73,7 @@ const AiContextGenerator = {
       ai += `---\n\n`;
       ai += `# Current Learning State\n\n`;
       ai += `The learner is currently watching this video and is approximately at:\n\n${currentTimestamp}\n\n`;
-      ai += `The learner has completed approximately:\n\n${data.progress?.percentComplete || 0}%\n\nof the video.\n\n`;
+      ai += `The learner has completed approximately:\n\n${progressPercentStr}\n\nof the video.\n\n`;
       ai += `---\n\n`;
       ai += `# Instructions For AI Assistant\n\n`;
       ai += `* Use this video as the learner's current learning resource.\n`;
@@ -71,19 +93,60 @@ const AiContextGenerator = {
       ai += `Creator:\n${data.instructor}\n\n`;
       ai += `Playlist Duration:\n${data.duration}\n\n`;
       ai += `Total Videos:\n${data.lecturesCount}\n\n`;
-      ai += `Progress:\n${data.progress?.completedLecturesCount || 0}/${data.lecturesCount}\n\n`;
-      ai += `Current Video:\n${data.currentLecture?.title || "None"}\n\n`;
-      ai += `Current Position:\nVideo ${data.currentLecture ? data.currentLecture.id : 0} of ${data.lecturesCount}\n\n`;
+      
+      const playlistPercentStr = data.progress?.percentComplete === "Unknown" ? "Unknown" : `${data.progress?.percentComplete || 0}%`;
+      ai += `Progress:\n${data.progress?.completedLecturesCount || 0}/${data.lecturesCount} (${playlistPercentStr})\n\n`;
+      
+      if (data.currentLecture) {
+        ai += `Current Video:\n${data.currentLecture.title}\n\n`;
+        
+        const hasLecProgress = data.currentLecture.progress && data.currentLecture.progress.percentComplete !== "Unknown";
+        if (hasLecProgress) {
+          const lecPercentStr = `${data.currentLecture.progress.percentComplete}%`;
+          const lecTimestamp = this.formatSecondsToTimeStr(data.currentLecture.progress.currentTimeSeconds);
+          const lecRemaining = this.formatSecondsToTimeStr(data.currentLecture.progress.remainingTimeSeconds);
+          
+          ai += `Video Progress:\n${lecPercentStr}\n\n`;
+          ai += `Current Position:\nVideo ${data.currentLecture.id} of ${data.lecturesCount} @ ${lecTimestamp}\n\n`;
+          ai += `Remaining:\n${lecRemaining}\n\n`;
+        } else {
+          ai += `Current Position:\nVideo ${data.currentLecture.id} of ${data.lecturesCount}\n\n`;
+        }
+      } else {
+        ai += `Current Video:\nNone\n\n`;
+        ai += `Current Position:\nNone\n\n`;
+      }
+      
       ai += `---\n\n`;
       ai += `# Playlist Description\n\n${data.description || ""}\n\n`;
       ai += `---\n\n`;
       ai += `# Current Video Description\n\n${data.currentLecture?.description || "No description available"}\n\n`;
       ai += `This description should always be included whenever available because it provides the strongest signal about what the learner is actively studying.\n\n`;
       ai += `---\n\n`;
+      
+      // Smart Inferred Focus
+      const topics = typeof LearningSchema !== "undefined" ? LearningSchema.extractLearningFocusAndUpcoming(data) : { focus: [], upcoming: [] };
+      ai += `# Current Learning Focus\n\n`;
+      if (topics.focus.length > 0) {
+        topics.focus.forEach(f => ai += `* ${f}\n`);
+      } else {
+        ai += `* None\n`;
+      }
+      ai += `\n`;
+      
+      ai += `# Upcoming Topics\n\n`;
+      if (topics.upcoming.length > 0) {
+        topics.upcoming.forEach(u => ai += `* ${u}\n`);
+      } else {
+        ai += `* None\n`;
+      }
+      ai += `\n`;
+      
+      ai += `---\n\n`;
       ai += `# Learning Progress\n\n`;
       ai += `Completed Videos:\n${data.progress?.completedLecturesCount || 0}\n\n`;
       ai += `Remaining Videos:\n${data.progress?.remainingLecturesCount || 0}\n\n`;
-      ai += `Completion Percentage:\n${data.progress?.percentComplete || 0}%\n\n`;
+      ai += `Completion Percentage:\n${playlistPercentStr}\n\n`;
       ai += `---\n\n`;
       ai += `# Upcoming Videos\n\n`;
       

@@ -275,7 +275,14 @@ const YouTubeExtractor = {
               title: videoDetails.title,
               sectionName: "Playlist Videos",
               sectionIndex: 0,
-              url: currentUrl
+              url: currentUrl,
+              description: videoDetails.description || "",
+              progress: {
+                percentComplete: localProgress.percentComplete,
+                currentTimeSeconds: localProgress.currentTimeSeconds,
+                remainingTimeSeconds: localProgress.remainingTimeSeconds,
+                durationSeconds: videoDetails.durationSeconds || 0
+              }
             };
             
             playlistDetails.chapters = videoDetails.chapters;

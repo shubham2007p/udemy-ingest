@@ -22,8 +22,10 @@ const MarkdownGenerator = {
     
     // Standalone YouTube Video Layout
     if (isYouTube && isVideo) {
-      const currentTimestamp = this.formatSecondsToTimeStr(data.progress?.currentTimeSeconds);
-      const remainingTime = this.formatSecondsToTimeStr(data.progress?.remainingTimeSeconds);
+      const hasValidProgress = data.progress && data.progress.percentComplete !== "Unknown";
+      const currentTimestamp = hasValidProgress ? this.formatSecondsToTimeStr(data.progress.currentTimeSeconds) : "Unknown";
+      const remainingTime = hasValidProgress ? this.formatSecondsToTimeStr(data.progress.remainingTimeSeconds) : "Unknown";
+      const progressPercentStr = hasValidProgress ? `${data.progress.percentComplete}%` : "Unknown";
       const videoId = data.videoId || "";
       
       let md = `# Video Information\n\n`;
@@ -36,9 +38,26 @@ const MarkdownGenerator = {
       md += `---\n\n`;
       md += `# Learning Progress\n\n`;
       md += `Current Position:\n${currentTimestamp}\n\n`;
-      md += `Progress:\n${data.progress?.percentComplete || 0}%\n\n`;
+      md += `Progress:\n${progressPercentStr}\n\n`;
       md += `Remaining:\n${remainingTime}\n\n`;
       
+      // Inferred topics focus
+      const topics = typeof LearningSchema !== "undefined" ? LearningSchema.extractLearningFocusAndUpcoming(data) : { focus: [], upcoming: [] };
+      if (topics.focus.length > 0 || topics.upcoming.length > 0) {
+        md += `---\n\n`;
+        md += `# Learning Focus\n\n`;
+        if (topics.focus.length > 0) {
+          md += `Current Focus:\n`;
+          topics.focus.forEach(f => md += `* ${f}\n`);
+          md += `\n`;
+        }
+        if (topics.upcoming.length > 0) {
+          md += `Upcoming Topics:\n`;
+          topics.upcoming.forEach(u => md += `* ${u}\n`);
+          md += `\n`;
+        }
+      }
+
       if (data.chapters && data.chapters.length > 0) {
         md += `---\n\n`;
         md += `# Chapters\n\n`;
@@ -70,9 +89,48 @@ const MarkdownGenerator = {
       md += `# Learning Progress\n\n`;
       md += `Completed Videos:\n${data.progress?.completedLecturesCount || 0}\n\n`;
       md += `Remaining Videos:\n${data.progress?.remainingLecturesCount || 0}\n\n`;
-      md += `Progress:\n${data.progress?.percentComplete || 0}%\n\n`;
-      md += `Current Video:\n${data.currentLecture?.title || "None"}\n\n`;
-      md += `Current Position:\n${data.currentLecture ? `Video ${data.currentLecture.id} of ${data.lecturesCount}` : "None"}\n\n`;
+      
+      const playlistPercentStr = data.progress?.percentComplete === "Unknown" ? "Unknown" : `${data.progress?.percentComplete || 0}%`;
+      md += `Progress:\n${playlistPercentStr}\n\n`;
+      
+      if (data.currentLecture) {
+        md += `Current Video:\n${data.currentLecture.title}\n\n`;
+        
+        // Expose active video detailed progress if available
+        const hasLecProgress = data.currentLecture.progress && data.currentLecture.progress.percentComplete !== "Unknown";
+        if (hasLecProgress) {
+          const lecPercentStr = `${data.currentLecture.progress.percentComplete}%`;
+          const lecTimestamp = this.formatSecondsToTimeStr(data.currentLecture.progress.currentTimeSeconds);
+          const lecRemaining = this.formatSecondsToTimeStr(data.currentLecture.progress.remainingTimeSeconds);
+          
+          md += `Video Progress:\n${lecPercentStr}\n\n`;
+          md += `Current Position:\nVideo ${data.currentLecture.id} of ${data.lecturesCount}\n\n`;
+          md += `Current Timestamp:\n${lecTimestamp}\n\n`;
+          md += `Remaining:\n${lecRemaining}\n\n`;
+        } else {
+          md += `Current Position:\nVideo ${data.currentLecture.id} of ${data.lecturesCount}\n\n`;
+        }
+      } else {
+        md += `Current Video:\nNone\n\n`;
+        md += `Current Position:\nNone\n\n`;
+      }
+      
+      // Inferred topics focus
+      const topics = typeof LearningSchema !== "undefined" ? LearningSchema.extractLearningFocusAndUpcoming(data) : { focus: [], upcoming: [] };
+      if (topics.focus.length > 0 || topics.upcoming.length > 0) {
+        md += `---\n\n`;
+        md += `# Learning Focus\n\n`;
+        if (topics.focus.length > 0) {
+          md += `Current Focus:\n`;
+          topics.focus.forEach(f => md += `* ${f}\n`);
+          md += `\n`;
+        }
+        if (topics.upcoming.length > 0) {
+          md += `Upcoming Topics:\n`;
+          topics.upcoming.forEach(u => md += `* ${u}\n`);
+          md += `\n`;
+        }
+      }
       md += `---\n\n`;
       md += `# Current Video Description\n\n${data.currentLecture?.description || "No description available"}\n\n`;
       md += `---\n\n`;
