@@ -1,36 +1,29 @@
 {
   "manifest_version": 3,
   "name": "AI Ingest",
-  "version": "1.0.0",
-  "description": "Extract and export learning platform course structures, progress, and context into AI-ready Markdown, JSON, and prompt-optimized formats.",
+  "version": "1.1.0",
+  "description": "Extract and export course & playlist structures, progress, and context from Udemy and YouTube into AI-ready Markdown, JSON, and prompt-optimized formats.",
   "permissions": [
     "activeTab",
     "scripting"
   ],
   "host_permissions": [
-    "https://*.udemy.com/*"
+    "https://*.udemy.com/*",
+    "https://*.youtube.com/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icon-16.png",
-      "32": "icon-32.png",
-      "48": "icon-48.png",
-      "128": "icon-128.png"
-    }
-  },
-  "icons": {
-    "16": "icon-16.png",
-    "32": "icon-32.png",
-    "48": "icon-48.png",
-    "128": "icon-128.png"
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {
       "matches": [
-        "https://*.udemy.com/*"
+        "https://*.udemy.com/*",
+        "https://*.youtube.com/*"
       ],
       "js": [
+        "schemas/learningSchema.js",
+        "extractors/udemy.js",
+        "extractors/youtube.js",
         "content.js"
       ],
       "run_at": "document_idle"

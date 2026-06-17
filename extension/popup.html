@@ -28,8 +28,8 @@
       <div id="panel-unsupported" class="panel hidden">
         <div class="info-card warning">
           <span class="ascii-glyph">[!]</span>
-          <h3>ERROR: NOT_ON_UDEMY</h3>
-          <p>This extension runs on Udemy. Open a course page or player page to extract contents.</p>
+          <h3 id="unsupported-title">ERROR: NOT_ON_SUPPORTED_PAGE</h3>
+          <p id="unsupported-msg">This extension runs on Udemy or YouTube. Open a course page or playlist page to extract contents.</p>
         </div>
       </div>
 
@@ -37,7 +37,7 @@
       <div id="panel-ready" class="panel hidden">
         <div class="info-card success">
           <span class="ascii-glyph">[o]</span>
-          <h3>UDEMY COURSE DETECTED</h3>
+          <h3 id="ready-status-title">COURSE DETECTED</h3>
           <p id="ready-course-title" class="detected-title">Loading title...</p>
         </div>
         <button id="btn-extract" class="btn btn-primary">
@@ -70,11 +70,11 @@
               <span id="stat-duration" class="stat-value">--</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">[ SECTIONS ]</span>
+              <span id="label-sections" class="stat-label">[ SECTIONS ]</span>
               <span id="stat-sections" class="stat-value">--</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">[ LECTURES ]</span>
+              <span id="label-lectures" class="stat-label">[ LECTURES ]</span>
               <span id="stat-lectures" class="stat-value">--</span>
             </div>
           </div>
@@ -108,6 +108,10 @@
       <span>opencode.ai // monospace // no-gradients</span>
     </footer>
   </div>
+  <script src="schemas/learningSchema.js"></script>
+  <script src="generators/markdownGenerator.js"></script>
+  <script src="generators/jsonGenerator.js"></script>
+  <script src="generators/aiContextGenerator.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
