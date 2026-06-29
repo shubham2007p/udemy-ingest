@@ -25,12 +25,28 @@
     <!-- Main Content Area -->
     <main class="app-main">
 
-      <!-- STATE 1: Unsupported Page -->
+      <!-- STATE 1: Universal / Unsupported Page -->
       <div id="panel-unsupported" class="panel hidden">
-        <div class="info-card warning">
-          <span class="ascii-glyph">[!]</span>
-          <h3 id="unsupported-title">ERROR: NOT_ON_SUPPORTED_PAGE</h3>
-          <p id="unsupported-msg">This extension runs on Udemy or YouTube. Open a course page or playlist page to extract contents.</p>
+        <div class="info-card">
+          <span class="ascii-glyph">[w]</span>
+          <h3 id="unsupported-title">UNIVERSAL WEBSITE INGESTION</h3>
+          <p id="unsupported-msg">Extract clean markdown, JSON & metadata from any webpage.</p>
+          
+          <div id="active-tab-ingest-container" class="form-group" style="margin-top: 10px; width: 100%;">
+            <label class="form-label">[ CURRENT TAB ]</label>
+            <div id="unsupported-detected-page" class="detected-title" style="text-align: left; margin-bottom: 8px;">No active page detected</div>
+            <button id="btn-ingest-active" class="btn btn-primary" style="margin-bottom: 12px;">
+              <span>[ INGEST CURRENT TAB ]</span>
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-top: 8px; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <label for="input-universal-url" class="form-label">[ INGEST ANY URL ]</label>
+            <input type="text" id="input-universal-url" placeholder="https://example.com/article" class="form-input" style="margin-bottom: 8px;" />
+            <button id="btn-ingest-url" class="btn btn-secondary">
+              <span>[ RUN URL INGESTION ]</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -67,7 +83,7 @@
           <p id="success-course-instructor" class="instructor-name">by Instructor Name</p>
           <div class="stats-grid">
             <div class="stat-item">
-              <span class="stat-label">[ DURATION ]</span>
+              <span id="label-duration" class="stat-label">[ DURATION ]</span>
               <span id="stat-duration" class="stat-value">--</span>
             </div>
             <div class="stat-item">
@@ -145,6 +161,7 @@
   <script src="playlistService.js"></script>
   <script src="videoService.js"></script>
   <script src="pageStateExtractor.js"></script>
+  <script src="extractors/universal.js"></script>
   <script src="generators/markdownGenerator.js"></script>
   <script src="generators/jsonGenerator.js"></script>
   <script src="generators/aiContextGenerator.js"></script>

@@ -6,6 +6,22 @@ const JsonGenerator = {
   generate(data) {
     if (!data) return "";
     
+    if (data.platform === "universal") {
+      return JSON.stringify({
+        platform: "universal",
+        type: "website",
+        url: data.url || "",
+        domain: data.domain || "",
+        title: data.title || "",
+        description: data.description || "",
+        metadata: data.metadata || {},
+        stats: data.stats || {},
+        sections: data.sections || [],
+        structuredContentTree: data.structuredContentTree || [],
+        generatedAt: new Date().toISOString()
+      }, null, 2);
+    }
+
     if (data.platform === "youtube") {
       if (data.type === "video") {
         // Format for YouTube Single Video

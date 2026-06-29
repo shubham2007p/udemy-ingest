@@ -14,8 +14,38 @@ const AiContextGenerator = {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   },
 
+  generateUniversalContext(data) {
+    let ai = `Use this information as the user's active reading and learning context.\n\n`;
+    ai += `# Webpage Context: ${data.title}\n\n`;
+    ai += `URL:\n${data.url}\n\n`;
+    if (data.domain) ai += `Domain:\n${data.domain}\n\n`;
+    if (data.description) ai += `Description:\n${data.description}\n\n`;
+    if (data.metadata && data.metadata.author) ai += `Author:\n${data.metadata.author}\n\n`;
+    if (data.metadata && data.metadata.publishDate) ai += `Published:\n${data.metadata.publishDate}\n\n`;
+    ai += `---\n\n`;
+    ai += `# Extracted Content\n\n`;
+    
+    if (typeof MarkdownGenerator !== "undefined") {
+      ai += MarkdownGenerator.generate(data);
+    } else {
+      ai += "_No content._";
+    }
+    ai += `\n\n---\n\n`;
+    ai += `# Instructions For AI Assistant\n\n`;
+    ai += `* Treat this webpage as the user's active reference material.\n`;
+    ai += `* Answer questions using the webpage's sections, structured lists, code blocks, tables, and forms.\n`;
+    ai += `* Maintain the original semantic hierarchy and meanings.\n`;
+    ai += `* Reference specific sections or URLs from the webpage in your explanations when appropriate.\n`;
+    
+    return ai.trim();
+  },
+
   generate(data) {
     if (!data) return "";
+    
+    if (data.platform === "universal") {
+      return this.generateUniversalContext(data);
+    }
     
     const isYouTube = data.platform === "youtube";
     const isVideo = data.type === "video";

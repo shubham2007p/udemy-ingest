@@ -20,18 +20,20 @@ function isYouTubePage() {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   const isUdemy = isUdemyPage();
   const isYouTube = isYouTubePage();
-  const isSupported = isUdemy || isYouTube;
-  const platform = isUdemy ? "udemy" : (isYouTube ? "youtube" : null);
+  const isUniversal = !isUdemy && !isYouTube;
+  const isSupported = true;
+  const platform = isUdemy ? "udemy" : (isYouTube ? "youtube" : "universal");
 
   if (request.action === "ping") {
     sendResponse({ status: "ready", isSupported: isSupported, platform: platform });
   } 
   
   else if (request.action === "getCourseInfo") {
-    let title = "Learning Platform Page";
-    let type = "course";
+    let title = "Webpage";
+    let type = "website";
     if (isUdemy && typeof UdemyExtractor !== "undefined") {
       title = UdemyExtractor.scrapeDOMMetadata().title || "Udemy Course Page";
+      type = "course";
     } else if (isYouTube && typeof YouTubeExtractor !== "undefined") {
       if (YouTubeExtractor.isPlaylistPage()) {
         const titleEl = document.querySelector('ytd-playlist-header-renderer h1#title, ytd-playlist-header-renderer #title a, h1#title');
@@ -48,6 +50,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         title = titleEl ? titleEl.innerText.trim() : document.title.replace(/ - YouTube$/i, "").trim();
         type = "video";
       }
+    } else {
+      title = document.title || "Webpage";
+      type = "website";
     }
     sendResponse({ isSupported: isSupported, platform: platform, title: title, type: type });
   } 
@@ -59,6 +64,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       extractPromise = UdemyExtractor.extract();
     } else if (isYouTube && typeof YouTubeExtractor !== "undefined") {
       extractPromise = YouTubeExtractor.extract();
+    } else if (isUniversal && typeof UniversalExtractor !== "undefined") {
+      try {
+        const rawData = UniversalExtractor.extract(document, window.location.href);
+        extractPromise = Promise.resolve(rawData);
+      } catch (err) {
+        extractPromise = Promise.reject(err);
+      }
     } else {
       sendResponse({ success: false, error: "Unsupported platform or extractor not loaded" });
       return;
@@ -66,8 +78,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     extractPromise
       .then(rawData => {
-        const normalized = LearningSchema.normalize(rawData);
-        sendResponse({ success: true, data: normalized });
+        const data = rawData.platform === "universal" ? rawData : LearningSchema.normalize(rawData);
+        sendResponse({ success: true, data: data });
       })
       .catch(err => {
         console.error("[AIIngest] Extraction error:", err);

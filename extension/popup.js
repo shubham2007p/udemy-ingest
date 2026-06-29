@@ -36,6 +36,14 @@ const inputApiKey = document.getElementById("input-api-key");
 const btnSaveSettings = document.getElementById("btn-save-settings");
 const btnCancelSettings = document.getElementById("btn-cancel-settings");
 
+// Universal Ingestion DOM elements
+const labelDuration = document.getElementById("label-duration");
+const inputUniversalUrl = document.getElementById("input-universal-url");
+const btnIngestActive = document.getElementById("btn-ingest-active");
+const btnIngestUrl = document.getElementById("btn-ingest-url");
+const unsupportedDetectedPage = document.getElementById("unsupported-detected-page");
+const activeTabIngestContainer = document.getElementById("active-tab-ingest-container");
+
 // State
 let activeTabId = null;
 let currentCourseData = null;
@@ -46,16 +54,33 @@ let previousPanel = "unsupported";
 // Initialize
 document.addEventListener("DOMContentLoaded", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return;
   
-  activeTabId = tab.id;
-  
+  if (btnIngestActive) {
+    btnIngestActive.addEventListener("click", () => {
+      if (tab && isSupportedUrl(tab.url)) {
+        startExtraction();
+      }
+    });
+  }
+  if (btnIngestUrl) {
+    btnIngestUrl.addEventListener("click", runManualUrlIngestion);
+  }
+
   // Initial load of settings key
   if (chrome.storage && chrome.storage.local) {
     chrome.storage.local.get("youtubeApiKey", (res) => {
       inputApiKey.value = res.youtubeApiKey || "";
     });
   }
+
+  if (!tab) {
+    showPanel("unsupported");
+    if (unsupportedDetectedPage) unsupportedDetectedPage.textContent = "No active window/tab";
+    if (activeTabIngestContainer) activeTabIngestContainer.classList.add("hidden");
+    return;
+  }
+  
+  activeTabId = tab.id;
 
   if (isSupportedUrl(tab.url)) {
     showPanel("loading");
@@ -86,6 +111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             "videoService.js",
             "pageStateExtractor.js",
             "extractors/youtube.js",
+            "extractors/universal.js",
             "content.js"
           ]
         });
@@ -97,15 +123,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
           stopSpinner();
           showPanel("unsupported");
+          setupUnsupportedPanelForTab(tab);
         }
       } catch (injectErr) {
         console.error("Failed to inject content script:", injectErr);
         stopSpinner();
         showPanel("unsupported");
+        setupUnsupportedPanelForTab(tab);
       }
     }
   } else {
     showPanel("unsupported");
+    setupUnsupportedPanelForTab(tab);
   }
 });
 
@@ -173,7 +202,76 @@ function isYouTubeUrl(url) {
 }
 
 function isSupportedUrl(url) {
-  return isUdemyUrl(url) || isYouTubeUrl(url);
+  if (!url) return false;
+  return url.startsWith("http://") || url.startsWith("https://");
+}
+
+function setupUnsupportedPanelForTab(tab) {
+  if (!unsupportedDetectedPage) return;
+  if (tab) {
+    let displayTitle = tab.title || "Untitled Page";
+    let displayHost = "local";
+    try {
+      displayHost = new URL(tab.url).hostname;
+    } catch(e) {}
+    unsupportedDetectedPage.textContent = `${displayTitle} (${displayHost})`;
+    
+    const isSystem = !tab.url.startsWith("http://") && !tab.url.startsWith("https://");
+    if (isSystem) {
+      unsupportedDetectedPage.textContent += " [SYSTEM PAGE - NOT INGESTIBLE]";
+      if (btnIngestActive) btnIngestActive.disabled = true;
+    } else {
+      if (btnIngestActive) btnIngestActive.disabled = false;
+    }
+  } else {
+    unsupportedDetectedPage.textContent = "No active page detected";
+    if (btnIngestActive) btnIngestActive.disabled = true;
+  }
+}
+
+async function runManualUrlIngestion() {
+  const url = inputUniversalUrl.value.trim();
+  if (!url) {
+    alert("Please enter a valid URL.");
+    return;
+  }
+  
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    alert("URL must start with http:// or https://");
+    return;
+  }
+
+  showPanel("loading");
+  startSpinner();
+  updateProgress("Downloading webpage HTML...", 20);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+    }
+    
+    updateProgress("Parsing DOM...", 50);
+    const htmlText = await response.text();
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, "text/html");
+    
+    updateProgress("Extracting content...", 85);
+    
+    // Execute extractor directly in popup sandbox
+    const data = UniversalExtractor.extract(doc, url);
+    
+    updateProgress("Formatting output...", 95);
+    setTimeout(() => {
+      stopSpinner();
+      displaySuccess(data);
+    }, 300);
+  } catch (err) {
+    stopSpinner();
+    alert(`Ingestion failed: ${err.message}`);
+    showPanel("unsupported");
+  }
 }
 
 function showPanel(panelName) {
@@ -234,8 +332,10 @@ async function showReadyState(tabId) {
         } else {
           readyStatusTitle.textContent = "YOUTUBE PLAYLIST DETECTED";
         }
-      } else {
+      } else if (response.platform === "udemy") {
         readyStatusTitle.textContent = "UDEMY COURSE DETECTED";
+      } else {
+        readyStatusTitle.textContent = "WEBPAGE DETECTED";
       }
     } else {
       readyCourseTitle.textContent = "Course Page";
@@ -291,23 +391,35 @@ function displaySuccess(data) {
   
   // Set metadata
   successCourseTitle.textContent = data.title;
-  successCourseInstructor.textContent = `by ${data.instructor}`;
-  statDuration.textContent = data.duration;
-  statSections.textContent = data.sectionsCount;
-  statLectures.textContent = data.lecturesCount;
   
-  // Update UI Labels depending on platform and type
-  if (data.platform === "youtube") {
-    if (data.type === "video") {
-      labelSections.textContent = "[ CHAPTERS ]";
-      labelLectures.textContent = "[ VIDEOS ]";
+  if (data.platform === "universal") {
+    successCourseInstructor.textContent = `from ${data.domain || data.url}`;
+    if (labelDuration) labelDuration.textContent = "[ WORDS ]";
+    statDuration.textContent = data.stats.wordCount;
+    labelSections.textContent = "[ SECTIONS ]";
+    statSections.textContent = data.stats.sectionCount;
+    labelLectures.textContent = "[ LINKS ]";
+    statLectures.textContent = data.stats.linkCount;
+  } else {
+    successCourseInstructor.textContent = `by ${data.instructor}`;
+    if (labelDuration) labelDuration.textContent = "[ DURATION ]";
+    statDuration.textContent = data.duration;
+    
+    // Update UI Labels depending on platform and type
+    if (data.platform === "youtube") {
+      if (data.type === "video") {
+        labelSections.textContent = "[ CHAPTERS ]";
+        labelLectures.textContent = "[ VIDEOS ]";
+      } else {
+        labelSections.textContent = "[ SECTIONS ]";
+        labelLectures.textContent = "[ VIDEOS ]";
+      }
     } else {
       labelSections.textContent = "[ SECTIONS ]";
-      labelLectures.textContent = "[ VIDEOS ]";
+      labelLectures.textContent = "[ LECTURES ]";
     }
-  } else {
-    labelSections.textContent = "[ SECTIONS ]";
-    labelLectures.textContent = "[ LECTURES ]";
+    statSections.textContent = data.sectionsCount;
+    statLectures.textContent = data.lecturesCount;
   }
   
   // Set output

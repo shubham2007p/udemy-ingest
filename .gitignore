@@ -10,3 +10,6 @@ DESIGN-opencode.ai.md
 
 # Ignore logs
 *.log
+
+# Ignore local test pages
+test-page.html

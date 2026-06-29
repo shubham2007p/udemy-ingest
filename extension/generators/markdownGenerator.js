@@ -14,8 +14,62 @@ const MarkdownGenerator = {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   },
 
+  generateUniversalMarkdown(data) {
+    let md = `# ${data.title}\n\n`;
+    md += `**URL:** ${data.url}\n`;
+    if (data.description) md += `**Description:** ${data.description}\n`;
+    if (data.metadata && data.metadata.author) md += `**Author:** ${data.metadata.author}\n`;
+    if (data.metadata && data.metadata.publishDate) md += `**Published:** ${data.metadata.publishDate}\n`;
+    md += `\n---\n\n`;
+
+    if (Array.isArray(data.flatOutline) && data.flatOutline.length > 0) {
+      data.flatOutline.forEach(item => {
+        if (item.type === "heading") {
+          md += `${"#".repeat(item.level)} ${item.text}\n\n`;
+        } else if (item.type === "paragraph") {
+          md += `${item.text}\n\n`;
+        } else if (item.type === "blockquote") {
+          md += `> ${item.text.replace(/\n/g, '\n> ')}\n\n`;
+        } else if (item.type === "code") {
+          md += `\`\`\`${item.language || ""}\n${item.code}\n\`\`\`\n\n`;
+        } else if (item.type === "image") {
+          md += `![${item.alt}](${item.src} "${item.title}")\n\n`;
+        } else if (item.type === "list") {
+          item.items.forEach((li, idx) => {
+            const bullet = item.listType === "ol" ? `${idx + 1}.` : "*";
+            md += `${bullet} ${li}\n`;
+          });
+          md += "\n";
+        } else if (item.type === "table") {
+          if (item.headers.length > 0 || item.rows.length > 0) {
+            const headers = item.headers.length > 0 ? item.headers : Array(item.rows[0]?.length || 0).fill("");
+            md += `| ${headers.join(" | ")} |\n`;
+            md += `| ${headers.map(() => "---").join(" | ")} |\n`;
+            item.rows.forEach(row => {
+              md += `| ${row.join(" | ")} |\n`;
+            });
+            md += "\n";
+          }
+        } else if (item.type === "form") {
+          md += `### Form: ${item.action || "Submit"}\n`;
+          item.fields.forEach(f => {
+            md += `* [ ] ${f.label} (${f.type})${f.placeholder ? ` [Placeholder: ${f.placeholder}]` : ""}\n`;
+          });
+          md += "\n";
+        }
+      });
+    } else {
+      md += "_No content extracted._";
+    }
+    return md.trim();
+  },
+
   generate(data) {
     if (!data) return "";
+    
+    if (data.platform === "universal") {
+      return this.generateUniversalMarkdown(data);
+    }
     
     const isYouTube = data.platform === "youtube";
     const isVideo = data.type === "video";
